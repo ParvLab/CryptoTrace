@@ -1,24 +1,14 @@
 use crate::error::Result;
-use crate::sanitization::sandbox::{Sandbox, SandboxConfig};
+use crate::sanitization::sandbox::SandboxConfig;
 use std::time::Duration;
 
 /// Configuration for isolated subprocess workers.
 /// Wraps the sandbox module for backward compatibility.
-pub struct WorkerPool {
-    #[allow(dead_code)]
-    sandbox: Sandbox,
-}
+pub struct WorkerPool;
 
 impl WorkerPool {
-    pub fn new(max_workers: usize) -> Self {
-        let config = SandboxConfig {
-            enabled: true,
-            max_concurrent: max_workers,
-            ..Default::default()
-        };
-        Self {
-            sandbox: Sandbox::new(config),
-        }
+    pub fn new(_max_workers: usize) -> Self {
+        Self
     }
 
     /// Run a parsing operation in an isolated subprocess.
@@ -26,7 +16,7 @@ impl WorkerPool {
         let mut config = SandboxConfig::default();
         config.enabled = true;
         config.timeout_seconds = timeout.as_secs().max(1);
-        let sandbox = Sandbox::new(config);
+        let sandbox = crate::sanitization::sandbox::Sandbox::new(config);
         sandbox.run_worker(operation, input)
     }
 }

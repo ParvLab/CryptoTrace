@@ -175,8 +175,26 @@ mod tests {
     }
 
     #[test]
-    fn test_calibrated_overlay() {
-        // Set a test model
+    fn test_calibrated_vs_fallback() {
+        // Verify fallback when no model
+        reset_model();
+        let result = build_detection_result(
+            b"5f4dcc3b5aa765d61d8327deb882cf99",
+            SourceType::String,
+            Some(&HashDetection {
+                algorithm: "MD5".to_string(),
+                confidence: 0.95,
+                risk_level: RiskLevel::Critical,
+                weakness_flags: vec!["collision_vulnerable".to_string()],
+            }),
+            None,
+            3.8,
+            None,
+        );
+        assert!(!result.calibrated);
+        assert!(result.confidence_is_provisional);
+
+        // Then verify calibration overlay
         let model = CalibrationModel {
             weights: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             intercept: -3.0,
@@ -194,8 +212,6 @@ mod tests {
             4.0,
             None,
         );
-
-        // entropy=4.0, weight=1.0, intercept=-3.0 → linear = 1.0, logistic(1.0) ≈ 0.731
         assert!(result.calibrated);
         assert!(!result.confidence_is_provisional);
         assert!((result.confidence - 0.731).abs() < 0.01);
@@ -203,26 +219,5 @@ mod tests {
         assert!(result.calibration_samples == Some(100));
 
         reset_model();
-    }
-
-    #[test]
-    fn test_fallback_when_no_model() {
-        reset_model();
-        let result = build_detection_result(
-            b"5f4dcc3b5aa765d61d8327deb882cf99",
-            SourceType::String,
-            Some(&HashDetection {
-                algorithm: "MD5".to_string(),
-                confidence: 0.95,
-                risk_level: RiskLevel::Critical,
-                weakness_flags: vec!["collision_vulnerable".to_string()],
-            }),
-            None,
-            3.8,
-            None,
-        );
-
-        assert!(!result.calibrated);
-        assert!(result.confidence_is_provisional);
     }
 }

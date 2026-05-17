@@ -2,7 +2,7 @@
 
 **Cryptographic Fingerprinting & Data Classification Engine**
 
-CryptoTrace analyses files and strings to detect cryptographic fingerprints — hashes, encodings, compressed data, encrypted blobs, and embedded high-entropy payloads. It explains *why* something is flagged via signal breakdown, recursive layer unwrapping, and provisional confidence scoring.
+CryptoTrace analyses files and strings to detect cryptographic fingerprints — hashes, encodings, compressed data, encrypted blobs, and embedded high-entropy payloads. It explains *why* something is flagged via signal breakdown, calibrated confidence scoring, recursive layer unwrapping, and optional AI narrative generation.
 
 ---
 
@@ -15,12 +15,14 @@ CryptoTrace analyses files and strings to detect cryptographic fingerprints — 
 - **Entropy analysis** — Shannon entropy (0.0–8.0) + 4KB sliding window with 2KB stride to find embedded high-entropy regions
 - **Magic byte registry** — 50-entry YAML-driven signature database covering compression, documents, images, audio, video, executables, archives, disk images, cryptographic keys, fonts, databases, and bytecode formats
 - **Recursive layer analysis** — unwraps nested encoding/compression with cycle detection, depth limit (10), timeout (30s), and expansion ratio guard
-- **Provisional confidence engine** — multi-signal weighting with entropy consistency (Phase 3 will add Platt scaling calibration)
+- **Calibrated confidence engine** — Platt scaling logistic regression (gradient descent with L2 regularization) trained on 6 signal features; includes fallback provisional scoring when no model is loaded
+- **AI narrative generation** — optional per-analysis narrative from OpenAI, Anthropic, or local models (Ollama); structured JSON output with per-field hallucination validation
+- **REST API** — axum-based HTTP server with `POST /analyze`, `GET /health`, `GET /version`; Bearer token auth and token-bucket rate limiting
+- **Subprocess sandbox** — isolates risky parsers in a separate process with hard timeout and crash recovery
 - **Risk classification** — Critical / High / Medium / Low / Unknown with category-based defaults and user override support
 - **Audit logging** — structured tracing events for every analysis
 - **Input sanitization** — size limits (50 MB files, 10 MB strings), null byte policy, path traversal prevention, symlink detection
-- **Sandbox scaffold** — Win32 Job Object isolation for subprocess workers (Phase 5)
-- **CLI** — `analyze`, `update`, `version`, `cache`, `config` commands via clap derive
+- **CLI** — `analyze`, `update`, `version`, `cache`, `config`, `calibrate` commands via clap derive
 - **JSON output** — machine-readable analysis results with all signals and metadata
 
 ---
@@ -30,7 +32,7 @@ CryptoTrace analyses files and strings to detect cryptographic fingerprints — 
 ### Prerequisites
 
 - **Rust 1.95.0** or later (stable toolchain)
-- **Windows** (x86_64-pc-windows-msvc) — primary target; Linux/macOS cross-compilation configured in `rust-toolchain.toml`
+- **Windows** (x86_64-pc-windows-msvc) — primary target
 
 ### Build from source
 
@@ -40,7 +42,7 @@ cd cryptotrace
 cargo build --release
 ```
 
-The release binary will be at `target/release/cryptotrace.exe` (~1.7 MB). A worker binary is also produced at `target/release/cryptotrace-worker.exe` (~130 KB) for Phase 5 subprocess isolation.
+The release binary will be at `target/release/cryptotrace.exe` (~6.1 MB). A worker binary is also produced at `target/release/cryptotrace-worker.exe` (~826 KB) for subprocess isolation.
 
 ### Verify
 
@@ -66,6 +68,7 @@ cryptotrace analyze "5f4dcc3b5aa765d61d8327deb882cf99"
 ```
 
 Detects MD5 hash:
+
 ```
 ═══════════════════════════════════════
  CryptoTrace Analysis Report
@@ -78,7 +81,7 @@ Detects MD5 hash:
 
  Detection:  MD5
  Type:       hash
- Confidence: 94% (provisional — Phase 1 engine)
+ Confidence: 94% (calibrated)
 
  Signals:
    entropy            3.80
@@ -104,56 +107,13 @@ cryptotrace analyze suspicious_file.bin
 
 If the path exists, it is read and analysed as a file.
 
-### Magic byte detection
-
-```bash
-cryptotrace analyze "%PDF-1.4"
-```
-
-Detects PDF document type from the `%PDF` magic bytes:
-```
- Detection:  pdf
- Type:       document
- Risk Level: Medium
-
- Signals:
-   ...
-   magic_bytes        1.00
-   ...
-```
-
 ### JSON output
 
 ```bash
 cryptotrace analyze "5f4dcc3b5aa765d61d8327deb882cf99" --json
 ```
 
-Returns structured JSON with all fields:
-```json
-{
-  "input_hash": "3f2cd8e57b096fe7e4a78a5627e34ca3f885ad65a56e61c287cf4211bbc5949f",
-  "source_type": "String",
-  "entropy": 3.804,
-  "detected_type": "hash",
-  "algorithm": "MD5",
-  "confidence": 0.945,
-  "risk_level": "Critical",
-  "signals": { ... },
-  "layers": [],
-  "engine_version": "0.1.0",
-  "signature_db_version": "1.0.0"
-}
-```
-
-### Threat context
-
-```bash
-cryptotrace analyze suspicious_entry.dll --context malware
-cryptotrace analyze hash.txt --context password
-cryptotrace analyze unknown.bin --context forensics
-```
-
-Adjusts classification heuristics for the given context (default: `forensics`).
+Returns structured JSON with all fields.
 
 ### Recursive analysis
 
@@ -162,6 +122,38 @@ cryptotrace analyze encoded_payload.bin --deep
 ```
 
 Unwraps nested layers (Base64 → GZIP → ...) up to depth 10 with timeout and expansion ratio guards.
+
+### Sandboxed analysis
+
+```bash
+cryptotrace analyze unknown.bin --sandbox
+```
+
+Runs the detection pipeline in an isolated subprocess with timeout and crash recovery.
+
+### AI narrative
+
+```bash
+# Requires OPENAI_API_KEY or ANTHROPIC_API_KEY env var
+cryptotrace analyze "5f4dcc3b5aa765d61d8327deb882cf99" --ai
+```
+
+Appends an AI-generated narrative (summary, risk reason, recommended action, confidence statement) to the output. Every field is validated for hallucination — CVEs must be real, summaries are sentence-limited, and risk reasons must reference actual signals.
+
+### Calibrate confidence
+
+```bash
+# Generate synthetic training data
+cryptotrace calibrate generate --samples 200
+
+# Train a Platt scaling model
+cryptotrace calibrate train --data calibration_data/train.csv
+
+# Check model status
+cryptotrace calibrate status
+```
+
+The calibration model is loaded at startup and used to produce calibrated confidence scores with per-signal attribution.
 
 ### Signature database management
 
@@ -174,6 +166,33 @@ cryptotrace update --from-file /path/to/updated-registry.yaml
 
 # Roll back to previous version
 cryptotrace update --rollback
+```
+
+### REST API server
+
+```bash
+# Start the API server (Ctrl+C to stop)
+cryptotrace --api
+```
+
+By default listens on `127.0.0.1:8080`. Configure via `cryptotrace.toml`:
+
+```toml
+[api]
+bind = "127.0.0.1:8080"
+api_key = "your-secret-key"
+rate_limit = 60
+sandbox_enabled = false
+```
+
+```bash
+# Health check
+curl http://127.0.0.1:8080/health
+
+# Analyze via API
+curl -X POST http://127.0.0.1:8080/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"input": "5f4dcc3b5aa765d61d8327deb882cf99", "input_type": "string"}'
 ```
 
 ### Cache and configuration
@@ -197,7 +216,7 @@ Each analysis returns a `SignalBreakdown` with these components:
 | `length_pattern` | 0.0–1.0 | How well length matches expected hash/encoding sizes |
 | `charset_purity` | 0.0–1.0 | Portion of input matching expected character set |
 | `window_variance` | 0.0+ | Variance in sliding-window entropy scores |
-| `byte_distribution` | 0.0–1.0 | Uniformity of byte frequency distribution (Phase 3) |
+| `byte_distribution` | 0.0–1.0 | Uniformity of byte frequency distribution |
 
 ---
 
@@ -205,13 +224,16 @@ Each analysis returns a `SignalBreakdown` with these components:
 
 ```
 src/
-├── main.rs                  # Binary entrypoint
+├── main.rs                  # Binary entrypoint (CLI or --api server)
 ├── lib.rs                   # Crate root (public module exports)
 ├── cli.rs                   # CLI definition (clap derive)
 ├── types.rs                 # Core structs: DetectionResult, SignalBreakdown, etc.
 ├── error.rs                 # CryptoTraceError enum (thiserror)
+├── workers.rs               # WorkerPool wrapper (backward compat)
+├── cache.rs                 # LRU cache for dedup and AI narratives
+├── update.rs                # Signature database update manager
 ├── analyzers/
-│   ├── file.rs              # Full detection pipeline for files and bytes
+│   ├── file.rs              # Full detection pipeline (+sandboxed variants)
 │   ├── string.rs            # String-specific analysis
 │   └── recursive.rs         # Recursive layer unwrapping
 ├── core/
@@ -221,28 +243,31 @@ src/
 │   ├── encoding.rs          # Encoding format detection
 │   ├── compression.rs       # Compression detection + decompression
 │   ├── encryption.rs        # Encryption heuristics
-│   └── confidence.rs        # Provisional confidence engine
+│   ├── calibration.rs       # Platt scaling logistic regression
+│   └── confidence.rs        # Calibrated/provisional confidence engine
 ├── signatures/
-│   └── mod.rs               # Magic byte registry (YAML-driven)
+│   ├── mod.rs               # Magic byte registry (YAML-driven)
+│   └── default.yaml         # 50-entry built-in registry
 ├── intelligence/
 │   ├── risk.rs              # Risk level resolution
-│   ├── prompt.rs            # AI narrative stub (Phase 4)
+│   ├── prompt.rs            # AI prompt builder (re-exports narrative)
+│   ├── narrative.rs         # AI response validation + build_prompt
 │   └── audit.rs             # Structured audit logging
+├── providers/
+│   └── mod.rs               # AiProvider trait (OpenAI/Anthropic/Local)
 ├── reports/
 │   ├── terminal.rs          # Formatted terminal output
 │   └── json.rs              # JSON serialization
 ├── sanitization/
-│   ├── guard.rs             # InputGuard (size, null bytes, path traversal)
-│   └── sandbox.rs           # Process isolation (Win32 Job Object)
-├── api/                     # REST API stubs (Phase 6)
-│   ├── mod.rs
-│   ├── auth.rs
-│   └── routes.rs
-├── providers/               # AI provider trait (Phase 4)
-│   └── mod.rs
-├── update.rs                # Signature database update manager
-├── cache.rs                 # LRU cache for dedup and AI narratives
-└── workers.rs               # Worker pool (Phase 5)
+│   ├── guard.rs             # InputGuard (size, null bytes, traversal)
+│   └── sandbox.rs           # Subprocess isolation with timeout
+├── api/
+│   ├── mod.rs               # ApiConfig + run() with graceful shutdown
+│   ├── routes.rs            # GET /health, GET /version, POST /analyze
+│   ├── auth.rs              # Bearer token auth + rate limiter
+│   └── errors.rs            # Structured JSON error responses
+└── bin/
+    └── worker.rs            # cryptotrace-worker binary
 ```
 
 ---
@@ -250,12 +275,13 @@ src/
 ## Security
 
 - **Air-gapped by default** — no network calls unless explicitly configured
-- **All AI features opt-in** — disabled until a provider is configured in `cryptotrace.toml`
+- **All AI features opt-in** — disabled until a provider is configured in `cryptotrace.toml` or env var
 - **Input limits** — 50 MB files, 10 MB strings, null bytes rejected in strings
 - **Decompression guards** — 100:1 expansion ratio limit, 100 MB output cap
 - **Recursion guards** — depth limit (10), timeout (30s), cycle detection via hash set
-- **Sandbox isolation** — risky parsers run in isolated subprocesses via Win32 Job Objects (Phase 5)
-- **Structured AI output** — per-field JSON validation prevents hallucination (Phase 4)
+- **Sandbox isolation** — risky parsers run in isolated subprocesses with hard timeout and crash recovery
+- **Structured AI output** — per-field JSON validation prevents hallucination (hallucinated CVEs, missing signal references)
+- **API authentication** — Bearer token or X-API-Key header with configurable rate limiting
 
 See [`SECURITY.md`](SECURITY.md) for the full security policy.
 
@@ -312,7 +338,7 @@ See [`cryptotrace.toml.example`](cryptotrace.toml.example) for a complete refere
 cargo test
 ```
 
-70+ unit tests covering all detection modules, sanitization, cache, signatures, and update management.
+94 tests covering all detection modules, calibration, sanitization, API server, sandbox, signatures, and update management.
 
 ### Building
 
@@ -327,20 +353,6 @@ cargo build --release       # release (LTO, stripped)
 cargo fmt
 cargo clippy
 ```
-
----
-
-## Roadmap
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| 1 | Core engine (entropy, hashing, encoding, compression detection), CLI, reports, tests | Done |
-| 2 | Magic byte registry (50 entries), real decompression (GZIP/BZ2/Zstd/XZ), update manager | Done |
-| 3 | Calibrated confidence (Platt scaling), signal attribution, accuracy benchmarks | Planned |
-| 4 | AI narrative generation (OpenAI/Anthropic/local), prompt validation | Planned |
-| 5 | Subprocess sandbox for risky parsers, ASN.1/PEM/BER full parsing | Planned |
-| 6 | REST API (axum), async job queue, rate limiting | Planned |
-| 7 | GPG-signed signature updates, verified update channel | Planned |
 
 ---
 

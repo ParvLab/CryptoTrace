@@ -70,20 +70,24 @@ max_ai_entries = 100
 dedup_enabled = true
 max_dedup_entries = 1000
 
-# === API Server (Phase 6) ===
+# === API Server ===
 
 [api]
-# Enable REST API server
+# Enable REST API server (start with: cryptotrace --api)
 enabled = false
 
 # Listen address
 bind = "127.0.0.1:8080"
 
-# API key (empty string = no auth)
+# API key for authentication (empty string = no auth required)
+# Provide via header: Authorization: Bearer <key> or X-API-Key: <key>
 #api_key = ""
 
-# Rate limit: requests per minute
+# Rate limit: requests per minute per IP
 rate_limit = 60
+
+# Enable subprocess sandboxing for API requests
+sandbox_enabled = false
 
 # === Logging ===
 

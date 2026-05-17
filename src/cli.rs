@@ -357,7 +357,7 @@ pub fn print_result(result: &DetectionResult, json: bool) {
 }
 
 /// Load AI provider from environment or config file.
-fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
+pub fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
     let mut config = crate::providers::AiProviderConfig::default();
 
     // Check environment variables first
