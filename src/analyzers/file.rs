@@ -1,5 +1,6 @@
 use crate::error::Result;
 use crate::providers::AiProvider;
+use crate::sanitization::sandbox::Sandbox;
 use crate::signatures::{default_registry, match_signatures, MagicEntry};
 use crate::types::DetectionResult;
 
@@ -65,6 +66,48 @@ pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Resu
     }
 
     Ok(result)
+}
+
+/// Run detection through the sandboxed worker subprocess.
+/// The worker performs the actual analysis; if it crashes, we fall back to
+/// in-process analysis and log a warning.
+pub fn analyze_file_sandboxed(path: &std::path::Path, sandbox: &Sandbox) -> Result<DetectionResult> {
+    let guard = crate::sanitization::InputGuard::new();
+    let sanitized = guard.sanitize_file(path)?;
+
+    // Try sandboxed detection
+    match sandbox.run_worker("detect", &sanitized.raw_bytes) {
+        Ok(output) => {
+            serde_json::from_slice(&output).map_err(|e| {
+                crate::error::CryptoTraceError::Other(format!(
+                    "Failed to parse worker output as DetectionResult: {}",
+                    e
+                ))
+            })
+        }
+        Err(e) => {
+            tracing::warn!("Sandboxed detection failed, falling back to in-process: {}", e);
+            analyze_bytes(&sanitized.raw_bytes, crate::types::SourceType::File)
+        }
+    }
+}
+
+/// Run byte analysis through the sandboxed worker subprocess.
+pub fn analyze_bytes_sandboxed(data: &[u8], sandbox: &Sandbox) -> Result<DetectionResult> {
+    match sandbox.run_worker("detect", data) {
+        Ok(output) => {
+            serde_json::from_slice(&output).map_err(|e| {
+                crate::error::CryptoTraceError::Other(format!(
+                    "Failed to parse worker output: {}",
+                    e
+                ))
+            })
+        }
+        Err(e) => {
+            tracing::warn!("Sandboxed byte analysis failed, falling back: {}", e);
+            analyze_bytes(data, crate::types::SourceType::Binary)
+        }
+    }
 }
 
 /// Attach an AI narrative to a detection result (async, opt-in).

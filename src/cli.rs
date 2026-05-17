@@ -33,6 +33,10 @@ pub enum Commands {
         /// Append AI narrative (requires AI provider config)
         #[arg(long)]
         ai: bool,
+
+        /// Run analysis in a sandboxed subprocess (resource limits + timeout)
+        #[arg(long)]
+        sandbox: bool,
     },
 
     /// Update the signature database (GPG-verified)
@@ -123,17 +127,35 @@ pub async fn run() -> Result<Option<DetectionResult>> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Analyze { input, context, deep, json: _, ai } => {
+        Commands::Analyze { input, context, deep, json: _, ai, sandbox } => {
             let detection_context = match context.as_str() {
                 "malware" => crate::types::DetectionContext::Malware,
                 "password" => crate::types::DetectionContext::Password,
                 _ => crate::types::DetectionContext::Forensics,
             };
 
+            // Build sandbox if enabled
+            let sandbox_instance = if *sandbox {
+                let sand_config = crate::sanitization::sandbox::SandboxConfig {
+                    enabled: true,
+                    ..Default::default()
+                };
+                Some(crate::sanitization::sandbox::Sandbox::new(sand_config))
+            } else {
+                None
+            };
+
             // Try as file first, then as string
             let path = std::path::Path::new(input);
             let mut result = if path.exists() {
-                crate::analyzers::file::analyze_file(path)?
+                if let Some(ref sb) = sandbox_instance {
+                    crate::analyzers::file::analyze_file_sandboxed(path, sb)?
+                } else {
+                    crate::analyzers::file::analyze_file(path)?
+                }
+            } else if let Some(ref sb) = sandbox_instance {
+                let data = input.as_bytes();
+                crate::analyzers::file::analyze_bytes_sandboxed(data, sb)?
             } else {
                 crate::analyzers::string::analyze_string(input)?
             };
@@ -238,10 +260,11 @@ pub async fn run() -> Result<Option<DetectionResult>> {
         Commands::Config { action } => {
             match action {
                 ConfigAction::Show => {
-                    println!("AI enabled: false");
-                    println!("API rate limit: 60/min");
-                    println!("Max file size: 50MB");
-                    println!("Max string size: 10MB");
+                    println!("AI enabled:        false");
+                    println!("Sandbox enabled:   false");
+                    println!("API rate limit:    60/min");
+                    println!("Max file size:     50MB");
+                    println!("Max string size:   10MB");
                 }
             }
             Ok(None)
