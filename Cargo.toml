@@ -41,6 +41,9 @@ statrs = "0.17"
 # MIME detection (pure Rust, no libmagic)
 tree_magic_mini = "3"
 
+# Async trait support for AI providers
+async-trait = "0.1"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -60,6 +63,9 @@ csv = "1"
 
 # Random number generation (synthetic data, etc.)
 rand = "0.9"
+
+# HTTP client for AI providers
+reqwest = { version = "0.12", features = ["json"] }
 
 [dev-dependencies]
 proptest = "1"

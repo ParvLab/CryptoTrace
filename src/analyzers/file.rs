@@ -1,4 +1,5 @@
 use crate::error::Result;
+use crate::providers::AiProvider;
 use crate::signatures::{default_registry, match_signatures, MagicEntry};
 use crate::types::DetectionResult;
 
@@ -37,7 +38,7 @@ pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Resu
         .map(|r| match_signatures(data, r))
         .unwrap_or_default();
 
-    // Build result with Phase 1 confidence engine + signature info
+    // Build result with confidence engine + signature info
     let mut result = crate::core::confidence::build_detection_result(
         data,
         source_type,
@@ -49,24 +50,32 @@ pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Resu
 
     // Overlay signature registry info (strongest signal)
     if let Some(best) = matched_signatures.iter().max_by_key(|e| e.magic_bytes.len()) {
-        // Override detected type and risk from registry if stronger
         if result.algorithm.is_none() && result.detected_type == "plaintext" {
             result.detected_type = best.category.clone();
             result.algorithm = Some(best.id.clone());
             result.risk_level = crate::signatures::category_risk_level(&best.category);
-            // Boost confidence if we have a strong magic match
             if result.confidence < 0.9 {
                 result.confidence = 0.9;
             }
             result.confidence_is_provisional = true;
         }
-        // Update magic_bytes signal
         if let Some(ref mut signals) = result.signals {
             signals.magic_bytes = 1.0;
         }
     }
 
     Ok(result)
+}
+
+/// Attach an AI narrative to a detection result (async, opt-in).
+pub async fn attach_ai_narrative(
+    result: &DetectionResult,
+    provider: &dyn AiProvider,
+) -> Result<DetectionResult> {
+    let narrative = crate::intelligence::prompt::generate_ai_narrative(result, provider).await?;
+    let mut out = result.clone();
+    out.ai_narrative = Some(narrative);
+    Ok(out)
 }
 
 #[cfg(test)]

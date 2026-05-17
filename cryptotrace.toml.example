@@ -9,9 +9,10 @@
 # Enable by uncommenting and configuring a provider below.
 
 #[ai]
-#provider = "openai"   # or "anthropic", "local"
+#provider = "openai"   # or "anthropic", "local" (Ollama)
 #api_key = "sk-..."    # not required for "local"
-#model = "gpt-4o"
+#model = "gpt-4o"      # "claude-sonnet-4", "llama3" for local
+#base_url = "http://localhost:11434"  # only for "local" (Ollama)
 #max_tokens = 1024
 #temperature = 0.3
 #timeout_seconds = 30

@@ -123,7 +123,7 @@ pub async fn run() -> Result<Option<DetectionResult>> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Analyze { input, context, deep, json: _, ai: _ } => {
+        Commands::Analyze { input, context, deep, json: _, ai } => {
             let detection_context = match context.as_str() {
                 "malware" => crate::types::DetectionContext::Malware,
                 "password" => crate::types::DetectionContext::Password,
@@ -180,6 +180,18 @@ pub async fn run() -> Result<Option<DetectionResult>> {
 
             // Log audit trail
             crate::intelligence::audit::log_analysis(&result);
+
+            // Optional AI narrative
+            if *ai {
+                if let Ok(provider) = load_ai_provider() {
+                    match crate::analyzers::file::attach_ai_narrative(&result, &*provider).await {
+                        Ok(r) => result = r,
+                        Err(e) => eprintln!("AI narrative: {}", e),
+                    }
+                } else {
+                    eprintln!("AI narrative requested but no AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or configure a local provider.");
+                }
+            }
 
             Ok(Some(result))
         }
@@ -319,4 +331,66 @@ pub fn print_result(result: &DetectionResult, json: bool) {
     } else {
         print!("{}", crate::reports::terminal::format_terminal(result));
     }
+}
+
+/// Load AI provider from environment or config file.
+fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
+    let mut config = crate::providers::AiProviderConfig::default();
+
+    // Check environment variables first
+    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+        config.provider_type = "openai".to_string();
+        config.api_key = Some(key);
+        if let Ok(model) = std::env::var("OPENAI_MODEL") {
+            config.model = model;
+        }
+    } else if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
+        config.provider_type = "anthropic".to_string();
+        config.api_key = Some(key);
+        if let Ok(model) = std::env::var("ANTHROPIC_MODEL") {
+            config.model = model;
+        }
+    } else if std::env::var("AI_PROVIDER").map_or(false, |v| v == "local") {
+        config.provider_type = "local".to_string();
+        config.base_url = std::env::var("AI_BASE_URL").ok();
+        if let Ok(model) = std::env::var("AI_MODEL") {
+            config.model = model;
+        }
+    } else {
+        // Try to load from cryptotrace.toml
+        let toml_path = std::path::Path::new("cryptotrace.toml");
+        if toml_path.exists() {
+            let content = std::fs::read_to_string(toml_path)
+                .map_err(|e| crate::error::CryptoTraceError::Other(format!("Config read: {}", e)))?;
+            let parsed: serde_json::Value = toml::from_str(&content)
+                .map_err(|e| crate::error::CryptoTraceError::Other(format!("Config parse: {}", e)))?;
+            if let Some(ai) = parsed.get("ai") {
+                if let Some(provider) = ai.get("provider").and_then(|v| v.as_str()) {
+                    config.provider_type = provider.to_string();
+                }
+                config.api_key = ai.get("api_key").and_then(|v| v.as_str()).map(|s| s.to_string());
+                config.model = ai
+                    .get("model")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or(config.model);
+                config.temperature = ai
+                    .get("temperature")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(config.temperature);
+                config.max_tokens = ai
+                    .get("max_tokens")
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as u32)
+                    .unwrap_or(config.max_tokens);
+                config.base_url = ai.get("base_url").and_then(|v| v.as_str()).map(|s| s.to_string());
+                config.timeout_seconds = ai
+                    .get("timeout_seconds")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(config.timeout_seconds);
+            }
+        }
+    }
+
+    crate::providers::create_provider(&config)
 }
