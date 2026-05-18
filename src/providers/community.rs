@@ -134,7 +134,6 @@ async fn download_provider_signatures(provider: &CommunityProvider) -> Result<Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_load_default_registry() {

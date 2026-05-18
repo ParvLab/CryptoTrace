@@ -18,6 +18,13 @@ pub struct AppState {
     pub job_queue: Option<Arc<JobQueue>>,
 }
 
+/// GET /docs — returns the OpenAPI specification.
+pub async fn docs() -> Json<serde_json::Value> {
+    let spec = serde_json::from_str(crate::api::OPENAPI_SPEC)
+        .unwrap_or_else(|_| serde_json::json!({"error": "OpenAPI spec failed to parse"}));
+    Json(spec)
+}
+
 /// GET /health — returns service status, version, and uptime.
 pub async fn health(
     Extension(state): Extension<Arc<AppState>>,
@@ -66,7 +73,7 @@ fn default_context() -> String {
 
 /// POST /analyze — run the detection pipeline synchronously.
 pub async fn analyze(
-    Extension(state): Extension<Arc<AppState>>,
+    Extension(_state): Extension<Arc<AppState>>,
     Json(body): Json<AnalyzeRequest>,
 ) -> Result<Json<DetectionResult>, ApiError> {
     let result = run_analysis(&body.input, &body.input_type, &body.context, body.deep, body.ai, body.sandbox).await?;

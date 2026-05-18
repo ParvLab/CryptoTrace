@@ -17,6 +17,18 @@ pub enum RiskLevel {
     Unknown,
 }
 
+impl std::fmt::Display for RiskLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RiskLevel::Low => write!(f, "low"),
+            RiskLevel::Medium => write!(f, "medium"),
+            RiskLevel::High => write!(f, "high"),
+            RiskLevel::Critical => write!(f, "critical"),
+            RiskLevel::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DetectionContext {
     Malware,
@@ -125,6 +137,38 @@ pub struct DetectionResult {
     pub detection_context: DetectionContext,
     pub engine_version: String,
     pub signature_db_version: String,
+}
+
+impl Default for DetectionResult {
+    fn default() -> Self {
+        Self {
+            input_hash: String::new(),
+            source_type: SourceType::String,
+            entropy: 0.0,
+            sliding_entropy: None,
+            detected_type: String::new(),
+            algorithm: None,
+            confidence: 0.0,
+            calibrated: false,
+            calibration_samples: None,
+            heuristic_raw: None,
+            confidence_is_provisional: true,
+            false_positive_risk: 0.0,
+            risk_level: RiskLevel::Unknown,
+            weakness: None,
+            weakness_cve: vec![],
+            recommendations: vec![],
+            signals: None,
+            primary_drivers: vec![],
+            conflicting_signals: vec![],
+            decision_trace: None,
+            layers: vec![],
+            ai_narrative: None,
+            detection_context: DetectionContext::Forensics,
+            engine_version: String::new(),
+            signature_db_version: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

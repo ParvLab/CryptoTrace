@@ -65,6 +65,7 @@ const SIGNAL_STRENGTH_WEIGHT: f64 = 0.5;
 const ENTROPY_WEIGHT: f64 = 0.3;
 
 /// Compute confidence using calibrated model if available, else provisional heuristic.
+#[allow(unused_variables)]
 pub fn compute_confidence(
     hash_detection: Option<&HashDetection>,
     encoding_detection: Option<&EncodingDetection>,
@@ -233,10 +234,10 @@ pub fn build_detection_result(
             risk_level = overridden_risk;
         }
         weakness_cve = algo_cves.clone();
-        // Also try loading from external CVE database
-        let ext_cves = crate::intelligence::risk::load_cve_database("cve-db.json");
+        // Also try loading from external CVE databases
+        let ext_cves = crate::intelligence::risk::build_cve_map("signatures/cve_map.yaml", "cve-db.json");
         for (cve_id, desc) in &ext_cves {
-            if algo.contains(cve_id) || desc.contains(algo) {
+            if algo.contains(cve_id) || desc.to_lowercase().contains(&algo.to_lowercase()) {
                 if !weakness_cve.contains(cve_id) {
                     weakness_cve.push(cve_id.clone());
                 }

@@ -28,8 +28,9 @@ impl Default for SandboxConfig {
 /// Platform-independent sandbox for isolating risky parser operations in a
 /// subprocess with timeout and crash recovery.
 ///
-/// - Windows: subprocess with CREATE_NO_WINDOW + timeout + kill-on-fallback
-/// - Unix:    subprocess with timeout default
+/// - Windows:   subprocess with CREATE_NO_WINDOW + timeout + kill-on-fallback
+/// - Linux:     subprocess with seccomp-bpf (blocks execve, clone, socket, etc.)
+/// - macOS:     subprocess with sandbox-init (deny network, fs-write, proc-spawn)
 ///
 /// The worker process is a separate binary (`cryptotrace-worker`) that
 /// performs the actual analysis. If it crashes or times out, the parent
@@ -68,11 +69,8 @@ impl Sandbox {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        }
+        // Platform-specific sandbox enforcement
+        apply_platform_sandbox(&mut cmd);
 
         let mut child = cmd.spawn().map_err(|e| {
             crate::error::CryptoTraceError::Other(format!("Failed to spawn worker: {}", e))
@@ -87,7 +85,6 @@ impl Sandbox {
                 use std::io::Write;
                 let _ = s.write_all(&input_owned);
                 let _ = s.flush();
-                // Drop s to close stdin
             }
         });
 
@@ -95,7 +92,6 @@ impl Sandbox {
         let timeout = Duration::from_secs(self.config.timeout_seconds);
         let output = Self::wait_with_timeout(child, timeout)?;
 
-        // Ensure stdin writer has finished
         let _ = writer.join();
 
         if !output.status.success() {
@@ -126,7 +122,6 @@ impl Sandbox {
         loop {
             match child.try_wait() {
                 Ok(Some(_status)) => {
-                    // Process has exited — collect remaining output
                     return child.wait_with_output().map_err(|e| {
                         crate::error::CryptoTraceError::Other(format!(
                             "Failed to collect worker output: {}",
@@ -155,6 +150,169 @@ impl Sandbox {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Platform-specific sandbox enforcement
+// ---------------------------------------------------------------------------
+
+/// Apply platform sandbox restrictions to the worker subprocess.
+/// Called before spawning. On Linux and macOS this uses `pre_exec` to
+/// install seccomp / sandbox-init in the child process after fork.
+#[cfg(target_os = "linux")]
+fn apply_platform_sandbox(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    unsafe {
+        cmd.pre_exec(|| {
+            if libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            install_seccomp_blacklist()
+        });
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn apply_platform_sandbox(cmd: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    unsafe {
+        cmd.pre_exec(|| {
+            let profile = b"(version 1)
+(deny default (with send-signal SIGKILL))
+(allow file-read* (subpath \"/\") (subpath \"/usr/lib/\"))
+(allow file-write* (subpath \"${HOME}\"))
+(allow process-exec (literal \"/usr/lib/dyld\"))
+(allow sysctl-uname)
+(allow mach*)
+";
+            let mut error: *mut libc::c_char = std::ptr::null_mut();
+            let ret = libc::sandbox_init(
+                profile.as_ptr() as *const libc::c_char,
+                0,
+                &mut error,
+            );
+            if ret != 0 {
+                if !error.is_null() {
+                    let msg = std::ffi::CStr::from_ptr(error).to_string_lossy().into_owned();
+                    libc::sandbox_free_error(error);
+                    Err(std::io::Error::new(std::io::ErrorKind::Other, msg))
+                } else {
+                    Err(std::io::Error::last_os_error())
+                }
+            } else {
+                Ok(())
+            }
+        });
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn apply_platform_sandbox(cmd: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn apply_platform_sandbox(_cmd: &mut Command) {
+    // other Unix: no extra sandbox
+}
+
+// ---------------------------------------------------------------------------
+// Seccomp-bpf for Linux
+// ---------------------------------------------------------------------------
+
+#[cfg(target_os = "linux")]
+fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
+    // Syscall numbers to block (x86_64)
+    const BLOCKED: &[u32] = &[
+        56,  // clone
+        57,  // fork
+        58,  // vfork
+        59,  // execve
+        62,  // kill
+        234, // tgkill
+        322, // execveat
+        335, // clone3
+        41,  // socket
+        42,  // connect
+        49,  // bind
+        50,  // listen
+        43,  // accept
+        288, // accept4
+        101, // ptrace
+        135, // personality
+        175, // init_module
+        176, // finit_module
+        179, // delete_module
+        246, // process_vm_readv
+        247, // process_vm_writev
+        172, // iopl
+        173, // ioperm
+    ];
+
+    // BPF instructions:
+    //   0: ld  [0]              ; load syscall number (offset 0 in seccomp_data)
+    //   1..n: jeq BLOCKED[i], KILL_LABEL
+    //   n+1: ret ALLOW
+    //   n+2: ret KILL
+
+    let mut filters: Vec<libc::sock_filter> = Vec::with_capacity(3 + BLOCKED.len());
+
+    // insn 0: ld [0]
+    filters.push(libc::sock_filter {
+        code: 0x20, // BPF_LD | BPF_W | BPF_ABS
+        jt: 0,
+        jf: 0,
+        k: 0, // offset 0 = syscall number
+    });
+
+    // insns 1..n: jeq BLOCKED[i], KILL_LABEL
+    let kill_offset: u8 = (BLOCKED.len() + 1) as u8; // skip remaining jeqs + ret allow
+    for syscall in BLOCKED {
+        filters.push(libc::sock_filter {
+            code: 0x15, // BPF_JMP | BPF_JEQ | BPF_K
+            jt: kill_offset,
+            jf: 0,
+            k: *syscall,
+        });
+    }
+
+    // insn n+1: ret ALLOW
+    filters.push(libc::sock_filter {
+        code: 0x06, // BPF_RET | BPF_K
+        jt: 0,
+        jf: 0,
+        k: 0x7fff_0000, // SECCOMP_RET_ALLOW
+    });
+
+    // insn n+2: ret KILL
+    filters.push(libc::sock_filter {
+        code: 0x06, // BPF_RET | BPF_K
+        jt: 0,
+        jf: 0,
+        k: 0x0000_0000, // SECCOMP_RET_KILL
+    });
+
+    let prog = libc::sock_fprog {
+        len: filters.len() as u16,
+        filter: filters.as_mut_ptr(),
+    };
+
+    let ret = unsafe {
+        libc::prctl(
+            libc::PR_SET_SECCOMP,
+            libc::SECCOMP_MODE_FILTER as libc::c_ulong,
+            &prog as *const _ as libc::c_ulong,
+        )
+    };
+    if ret != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

@@ -14,6 +14,9 @@ use crate::jobs::JobQueue;
 use crate::sanitization::sandbox::{Sandbox, SandboxConfig};
 use routes::AppState;
 
+/// Embedded OpenAPI 3.0 specification.
+pub(crate) const OPENAPI_SPEC: &str = include_str!("openapi.json");
+
 /// API server configuration.
 #[derive(Debug, Clone)]
 pub struct ApiConfig {
@@ -54,6 +57,7 @@ pub async fn run(config: ApiConfig) -> Result<(), crate::error::CryptoTraceError
     let job_queue = if config.jobs_enabled {
         let queue = JobQueue::new(config.max_concurrent_jobs);
         queue.clone().start_worker();
+        queue.clone().start_cleanup();
         Some(queue)
     } else {
         None
@@ -74,7 +78,8 @@ pub async fn run(config: ApiConfig) -> Result<(), crate::error::CryptoTraceError
     let mut router = Router::new()
         .route("/health", get(routes::health))
         .route("/version", get(routes::version))
-        .route("/analyze", post(routes::analyze));
+        .route("/analyze", post(routes::analyze))
+        .route("/docs", get(routes::docs));
 
     if config.jobs_enabled {
         router = router

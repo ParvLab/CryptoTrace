@@ -54,6 +54,56 @@ pub fn load_cve_database(path: &str) -> HashMap<String, String> {
     cvemap
 }
 
+/// Load CVE entries from the YAML cve_map.yaml file.
+/// The file format:
+/// ```yaml
+/// cves:
+///   - algorithm: MD5
+///     cve_ids: [CVE-2013-4103]
+///     severity: CRITICAL
+///     description: "..."
+/// ```
+/// Returns a map of CVE_ID → description for quick lookup.
+pub fn load_cve_yaml_database(path: &str) -> HashMap<String, String> {
+    let mut cvemap = HashMap::new();
+    if let Ok(content) = std::fs::read_to_string(path) {
+        if let Ok(parsed) = serde_yaml::from_str::<CveMapFile>(&content) {
+            for entry in parsed.cves {
+                for cve_id in entry.cve_ids {
+                    cvemap.insert(cve_id, entry.description.clone());
+                }
+            }
+        }
+    }
+    cvemap
+}
+
+#[derive(serde::Deserialize)]
+#[allow(dead_code)]
+struct CveMapFile {
+    version: String,
+    cves: Vec<CveEntry>,
+}
+
+#[derive(serde::Deserialize)]
+#[allow(dead_code)]
+struct CveEntry {
+    algorithm: String,
+    cve_ids: Vec<String>,
+    severity: String,
+    description: String,
+}
+
+/// Helper: build a combined CVE map from both sources.
+/// Tries yaml first, then json as fallback.
+pub fn build_cve_map(yaml_path: &str, json_path: &str) -> HashMap<String, String> {
+    let mut m = load_cve_yaml_database(yaml_path);
+    if m.is_empty() {
+        m = load_cve_database(json_path);
+    }
+    m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

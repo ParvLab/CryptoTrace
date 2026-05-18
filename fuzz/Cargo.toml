@@ -6,6 +6,10 @@ edition = "2024"
 [package.metadata]
 cargo-fuzz = true
 
+[[bin]]
+name = "analyze"
+path = "fuzz_targets/analyze.rs"
+
 [dependencies]
 cryptotrace = { path = ".." }
 libfuzzer-sys = "0.4"

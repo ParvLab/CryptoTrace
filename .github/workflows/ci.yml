@@ -48,12 +48,14 @@ jobs:
         run: cargo build
 
   fuzz:
-    name: Fuzz smoke test
+    name: Fuzz smoke test (100K)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz
-      - name: Fuzz for 30 seconds
-        run: cargo fuzz run analyze -- -max_total_time=30 || true
+      - name: Create initial corpus dir
+        run: mkdir -p fuzz/corpus/analyze
+      - name: Fuzz 100K iterations
+        run: cargo +nightly fuzz run analyze -- -runs=100000 -max_total_time=300

@@ -1,0 +1,71 @@
+# External CVE mapping for cryptographic weaknesses.
+# Users can override risk levels via cryptotrace.toml [risk.overrides].
+
+version: "1.0.0"
+
+cves:
+  - algorithm: MD5
+    cve_ids:
+      - CVE-2013-4103
+      - CVE-2011-4114
+      - CVE-2008-5077
+    severity: CRITICAL
+    description: Collision attacks demonstrated (Xie, 2013; chosen-prefix, 2008)
+
+  - algorithm: SHA1
+    cve_ids:
+      - CVE-2017-11450
+      - CVE-2015-7575
+      - CVE-2005-4900
+    severity: HIGH
+    description: Collision attacks demonstrated (SHAttered, 2017)
+
+  - algorithm: NTLM
+    cve_ids:
+      - CVE-2019-1336
+      - CVE-2015-2557
+      - CVE-2012-1886
+    severity: CRITICAL
+    description: No salt, no KDF, known plaintext attack vectors
+
+  - algorithm: DES
+    cve_ids:
+      - CVE-2016-2183
+      - CVE-2008-5146
+    severity: CRITICAL
+    description: 56-bit key, brute-forced in under 24 hours
+
+  - algorithm: RC4
+    cve_ids:
+      - CVE-2015-2808
+      - CVE-2013-2566
+    severity: CRITICAL
+    description: Multiple biases in keystream; practical attacks demonstrated
+
+  - algorithm: PBKDF2
+    cve_ids: []
+    severity: MEDIUM
+    description: No specific CVE; considered weak relative to Argon2id due to GPU-friendly design
+
+  - algorithm: AES-128-ECB
+    cve_ids:
+      - CVE-2016-6327
+    severity: HIGH
+    description: ECB mode is deterministic; identical plaintext blocks produce identical ciphertext
+
+  - algorithm: AES-128-CBC
+    cve_ids:
+      - CVE-2016-2107
+      - CVE-2013-0169
+    severity: MEDIUM
+    description: Malleable without authentication; Lucky13 attack on CBC padding
+
+  - algorithm: Base64
+    cve_ids: []
+    severity: LOW
+    description: Encoding only; no cryptographic weakness
+
+  - algorithm: Base58
+    cve_ids: []
+    severity: LOW
+    description: Encoding only; no cryptographic weakness

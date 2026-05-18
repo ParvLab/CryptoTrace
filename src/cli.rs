@@ -135,7 +135,7 @@ pub async fn run() -> Result<Option<DetectionResult>> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Analyze { input, context, deep, json: _, explain, ai, sandbox } => {
+        Commands::Analyze { input, context, deep, json: _, explain: _, ai, sandbox } => {
             let detection_context = match context.as_str() {
                 "malware" => crate::types::DetectionContext::Malware,
                 "password" => crate::types::DetectionContext::Password,
