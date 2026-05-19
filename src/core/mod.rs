@@ -5,3 +5,4 @@ pub mod encoding;
 pub mod compression;
 pub mod encryption;
 pub mod confidence;
+pub mod calibration;

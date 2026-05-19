@@ -69,7 +69,7 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
         };
 
         // Try to decode/decompress
-        let decoded = if let Some(e) = &encoding_detection {
+        let decoded: Option<Vec<u8>> = if let Some(e) = &encoding_detection {
             // For Base64, attempt decode
             if e.encoding_type == "Base64" {
                 use base64::Engine as _;
@@ -87,7 +87,9 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
                 None
             }
         } else if let Some(c) = &compression_detection {
-            crate::core::compression::try_decompress(&current_data, &c.format).ok()
+            crate::core::compression::try_decompress(&current_data, &c.format)
+                .ok()
+                .map(|r| r.data)
         } else {
             None
         };

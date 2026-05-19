@@ -35,8 +35,12 @@ fn try_detect(s: &str) -> Option<HashDetection> {
     }
 
     if is_hex {
-        // NTLM must come before MD5 (both are 32 chars; NTLM is always uppercase)
-        if len == 32 && s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
+        // NTLM must come before MD5 (both are 32 chars; NTLM is always uppercase
+        // with at least one uppercase letter to distinguish from pure-digit hashes)
+        if len == 32
+            && s.chars().any(|c| c.is_ascii_uppercase())
+            && s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        {
             return Some(HashDetection {
                 algorithm: "NTLM".to_string(),
                 confidence: 0.85,
@@ -96,20 +100,14 @@ fn looks_like_uuid(s: &str) -> bool {
     if s.len() != 32 {
         return false;
     }
-    let _groups = [
-        &s[0..8],
-        &s[8..12],
-        &s[12..16],
-        &s[16..20],
-        &s[20..32],
-    ];
-    // Check version nibble (13th character should be 4 for UUIDv4)
-    let version_char = s.chars().nth(12);
-    if let Some(c) = version_char {
-        c == '4'
-    } else {
-        false
+    // Check version nibble (13th hex char, index 12, should be 4 for UUIDv4)
+    let version_char = s.as_bytes().get(12).copied().unwrap_or(0);
+    if version_char != b'4' {
+        return false;
     }
+    // Check variant nibble (17th hex char, index 16, should be 8/9/a/b)
+    let variant_char = s.as_bytes().get(16).copied().unwrap_or(0);
+    matches!(variant_char, b'8' | b'9' | b'a' | b'b' | b'A' | b'B')
 }
 
 fn is_prefix_based(s: &str) -> bool {
@@ -118,6 +116,7 @@ fn is_prefix_based(s: &str) -> bool {
         || s.starts_with("$2y$")
         || s.starts_with("$argon2id$")
         || s.starts_with("$argon2i$")
+        || s.starts_with("$pbkdf2-")
 }
 
 fn detect_prefix_based(s: &str) -> Option<HashDetection> {
@@ -160,6 +159,29 @@ fn detect_prefix_based(s: &str) -> Option<HashDetection> {
             risk_level: RiskLevel::Low,
             weakness_flags: vec![],
         });
+    }
+
+    // PBKDF2: $pbkdf2-{digest}${iterations}${salt}${hash}
+    // e.g. $pbkdf2-sha256$100000$salt$hash
+    if s.starts_with("$pbkdf2-") {
+        let parts: Vec<&str> = s.split('$').collect();
+        // Minimum: $pbkdf2-digest$iterations$salt$hash
+        if parts.len() >= 4 {
+            let digest = parts.first().and_then(|_| parts.get(1).and_then(|p| {
+                // extract digest after "$pbkdf2-"
+                let rest = p.strip_prefix("pbkdf2-").unwrap_or("");
+                if rest.is_empty() { None } else { Some(rest) }
+            }));
+            let algo = digest.unwrap_or("unknown");
+            let has_iterations = parts.get(2).map(|i| i.parse::<u64>().is_ok()).unwrap_or(false);
+
+            return Some(HashDetection {
+                algorithm: format!("PBKDF2-{}", algo.to_uppercase()),
+                confidence: if has_iterations { 0.98 } else { 0.90 },
+                risk_level: RiskLevel::Low,
+                weakness_flags: vec![],
+            });
+        }
     }
 
     None
@@ -244,6 +266,19 @@ mod tests {
     fn test_ntlm() {
         let result = detect_hash("A0B1C2D3E4F5060708090A0B0C0D0E0F").unwrap();
         assert_eq!(result.algorithm, "NTLM");
+    }
+
+    #[test]
+    fn test_pbkdf2_sha256() {
+        let result = detect_hash("$pbkdf2-sha256$100000$salt$hashvaluehere12345").unwrap();
+        assert_eq!(result.algorithm, "PBKDF2-SHA256");
+        assert!(result.confidence > 0.95);
+    }
+
+    #[test]
+    fn test_pbkdf2_sha512() {
+        let result = detect_hash("$pbkdf2-sha512$50000$other_salt$abcdefhash").unwrap();
+        assert_eq!(result.algorithm, "PBKDF2-SHA512");
     }
 
     #[test]

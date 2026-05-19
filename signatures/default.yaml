@@ -1,0 +1,1046 @@
+# CryptoTrace Magic Byte Registry
+# Version: 1.0.0
+# Each entry maps a magic byte sequence to a file type for detection.
+
+version: "1.0.0"
+
+signatures:
+  # ── Compression ──────────────────────────────────────────────
+  - id: gzip
+    name: GZIP Compressed Archive
+    magic_bytes: "1F8B"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    notes: GZIP format, often used for single-file compression
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+      origin_reference: RFC 1952
+
+  - id: bzip2
+    name: BZIP2 Compressed Archive
+    magic_bytes: "425A68"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: zstd
+    name: Zstandard Compressed
+    magic_bytes: "28B52FFD"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: xz
+    name: XZ Compressed Archive
+    magic_bytes: "FD377A585A00"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: zip
+    name: ZIP Archive
+    magic_bytes: "504B0304"
+    offset: 0
+    category: compression
+    risk_level: MEDIUM
+    notes: May contain executable content; inspect inner files
+    subtypes:
+      - id: zip_docx
+        name: Office Open XML Document (DOCX)
+        detect: "[Content_Types].xml"
+      - id: zip_xlsx
+        name: Office Open XML Workbook (XLSX)
+        detect: "xl/workbook.xml"
+      - id: zip_pptx
+        name: Office Open XML Presentation (PPTX)
+        detect: "ppt/presentation.xml"
+      - id: zip_jar
+        name: Java Archive (JAR)
+        detect: "META-INF/MANIFEST.MF"
+      - id: zip_apk
+        name: Android Package (APK)
+        detect: "AndroidManifest.xml"
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: rar
+    name: RAR Archive
+    magic_bytes: "526172211A07"
+    offset: 0
+    category: compression
+    risk_level: LOW
+
+  - id: rar5
+    name: RAR v5 Archive
+    magic_bytes: "526172211A0701"
+    offset: 0
+    category: compression
+    risk_level: LOW
+
+  - id: sevenz
+    name: 7-Zip Archive
+    magic_bytes: "377ABCAF271C"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: lz4
+    name: LZ4 Framed Compression
+    magic_bytes: "04224D18"
+    offset: 0
+    category: compression
+    risk_level: LOW
+
+  # ── Documents ─────────────────────────────────────────────
+  - id: pdf
+    name: PDF Document
+    magic_bytes: "25504446"
+    offset: 0
+    category: document
+    risk_level: MEDIUM
+    notes: PDF files can contain embedded JavaScript, forms, or executables
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+      origin_reference: ISO 32000
+
+  - id: rtf
+    name: Rich Text Format
+    magic_bytes: "7B5C727466"
+    offset: 0
+    category: document
+    risk_level: LOW
+
+  # ── Images ────────────────────────────────────────────────
+  - id: png
+    name: PNG Image
+    magic_bytes: "89504E470D0A1A0A"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: PNG can embed metadata (iTXt, zTXt) used for steganography
+    subtypes:
+      - id: png_apng
+        name: Animated PNG
+        detect: "acTL"
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: jpeg
+    name: JPEG Image
+    magic_bytes: "FFD8FF"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: JPEG EXIF metadata may contain GPS coordinates
+    provenance:
+      contributor: cryptotrace-core
+      review_status: reviewed
+      review_date: "2026-05-17"
+
+  - id: gif
+    name: GIF Image
+    magic_bytes: "47494638"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  - id: bmp
+    name: BMP Image
+    magic_bytes: "424D"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  - id: tiff_le
+    name: TIFF Image (Little-Endian)
+    magic_bytes: "49492A00"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  - id: tiff_be
+    name: TIFF Image (Big-Endian)
+    magic_bytes: "4D4D002A"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  - id: webp
+    name: WebP Image
+    magic_bytes: "52494646"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: RIFF container; check for WEBP at offset 8
+
+  - id: ico
+    name: Icon File
+    magic_bytes: "00000100"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  # ── Audio ─────────────────────────────────────────────────
+  - id: mp3_id3
+    name: MP3 Audio (ID3 header)
+    magic_bytes: "494433"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: mp3_sync
+    name: MP3 Audio (sync)
+    magic_bytes: "FFFB"
+    offset: 0
+    category: audio
+    risk_level: LOW
+
+  - id: flac
+    name: FLAC Audio
+    magic_bytes: "664C6143"
+    offset: 0
+    category: audio
+    risk_level: LOW
+
+  - id: wav
+    name: WAV Audio
+    magic_bytes: "52494646"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: RIFF/WAV container; check format at offset 8
+
+  - id: ogg
+    name: OGG Audio
+    magic_bytes: "4F676753"
+    offset: 0
+    category: audio
+    risk_level: LOW
+
+  - id: aac
+    name: AAC Audio
+    magic_bytes: "FFF1"
+    offset: 0
+    category: audio
+    risk_level: LOW
+
+  # ── Video ─────────────────────────────────────────────────
+  - id: mp4
+    name: MP4 Video
+    magic_bytes: "0000002066747970"
+    offset: 4
+    category: video
+    risk_level: LOW
+    subtypes:
+      - id: mp4_avc
+        name: MP4 with AVC
+        detect: "avc1"
+      - id: mp4_hevc
+        name: MP4 with HEVC
+        detect: "hvc1"
+
+  - id: avi
+    name: AVI Video
+    magic_bytes: "52494646"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: AVI in RIFF container; check for AVI at offset 8
+
+  - id: mkv
+    name: Matroska Video (MKV)
+    magic_bytes: "1A45DFA3"
+    offset: 0
+    category: video
+    risk_level: LOW
+
+  - id: mov
+    name: QuickTime MOV
+    magic_bytes: "00000014667479707174"
+    offset: 4
+    category: video
+    risk_level: LOW
+
+  - id: wmv
+    name: Windows Media Video
+    magic_bytes: "3026B2758E66CF11"
+    offset: 0
+    category: video
+    risk_level: LOW
+
+  - id: flv
+    name: Flash Video
+    magic_bytes: "464C56"
+    offset: 0
+    category: video
+    risk_level: LOW
+
+  # ── Executables ───────────────────────────────────────────
+  - id: elf
+    name: ELF Executable
+    magic_bytes: "7F454C46"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+    notes: Linux/macOS native binary; inspect for packed/obfuscated sections
+    subtypes:
+      - id: elf_exec
+        name: ELF Executable
+        detect: "ET_EXEC"
+      - id: elf_dyn
+        name: ELF Shared Object
+        detect: "ET_DYN"
+      - id: elf_rel
+        name: ELF Relocatable
+        detect: "ET_REL"
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: pe
+    name: PE Executable
+    magic_bytes: "4D5A"
+    offset: 0
+    category: executable
+    risk_level: CRITICAL
+    notes: 'Windows PE (EXE/DLL/SYS). Check "PE\0\0" at offset e_lfanew'
+    subtypes:
+      - id: pe_exe
+        name: PE Executable
+        detect: "PE_LF_EXECUTABLE"
+      - id: pe_dll
+        name: PE Dynamic Link Library
+        detect: "PE_LF_DLL"
+      - id: pe_driver
+        name: PE Kernel Driver
+        detect: "PE_LF_DRIVER"
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: macho
+    name: Mach-O Binary
+    magic_bytes: "FEEDFACE"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+    subtypes:
+      - id: macho_64
+        name: Mach-O 64-bit
+        detect: "FEEDFACF"
+      - id: macho_arm64e
+        name: Mach-O ARM64e
+        detect: "FEEDFACF_ARM64E"
+
+  - id: macho64
+    name: Mach-O 64-bit Binary
+    magic_bytes: "FEEDFACF"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+
+  - id: macho_rev
+    name: Mach-O Binary (reverse-endian)
+    magic_bytes: "CEFAEDFE"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+
+  # ── Archives ──────────────────────────────────────────────
+  - id: tar
+    name: TAR Archive
+    magic_bytes: "7573746172"
+    offset: 257
+    category: archive
+    risk_level: LOW
+    notes: '"ustar" signature at offset 257'
+
+  - id: cpio
+    name: CPIO Archive
+    magic_bytes: "303730373037"
+    offset: 0
+    category: archive
+    risk_level: LOW
+
+  - id: ar
+    name: AR Archive
+    magic_bytes: "213C617263683E"
+    offset: 0
+    category: archive
+    risk_level: LOW
+
+  # ── Disk Images ───────────────────────────────────────────
+  - id: iso9660
+    name: ISO 9660 Disc Image
+    magic_bytes: "4344303031"
+    offset: 32769
+    category: disk
+    risk_level: LOW
+    notes: '"CD001" at offset 32769 (sector 16)'
+
+  - id: vmdk
+    name: VMDK Disk Image
+    magic_bytes: "4B444D"
+    offset: 0
+    category: disk
+    risk_level: LOW
+
+  - id: qcow2
+    name: QEMU QCOW2 Disk Image
+    magic_bytes: "514649FB"
+    offset: 0
+    category: disk
+    risk_level: LOW
+
+  # ── Cryptographic ──────────────────────────────────────────
+  - id: pgp_public
+    name: PGP Public Key Block
+    magic_bytes: "2D2D2D2D424547494E20504750205055424C4943204B455920424C4F434B2D2D2D2D"
+    offset: 0
+    category: cryptographic
+    risk_level: LOW
+    notes: ASCII-armored PGP public key
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: pgp_private
+    name: PGP Private Key Block
+    magic_bytes: "2D2D2D2D424547494E205047502050524956415445204B455920424C4F434B2D2D2D2D"
+    offset: 0
+    category: cryptographic
+    risk_level: CRITICAL
+    notes: ASCII-armored PGP private key
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: pgp_message
+    name: PGP Message Block
+    magic_bytes: "2D2D2D2D424547494E20504750204D4553534147452D2D2D2D"
+    offset: 0
+    category: cryptographic
+    risk_level: MEDIUM
+    notes: ASCII-armored PGP encrypted message
+
+  - id: pkcs12
+    name: PKCS#12 Certificate Store
+    magic_bytes: "3082"
+    offset: 0
+    category: cryptographic
+    risk_level: CRITICAL
+    notes: DER-encoded PKCS#12 (PFX); may contain private keys
+
+  - id: openssl_enc
+    name: OpenSSL Encrypted Data
+    magic_bytes: "53616C7465645F5F"
+    offset: 0
+    category: cryptographic
+    risk_level: MEDIUM
+    notes: '"Salted__" prefix from OpenSSL enc -aes-256-cbc'
+
+  # ── Fonts ─────────────────────────────────────────────────
+  - id: ttf
+    name: TrueType Font
+    magic_bytes: "0001000000"
+    offset: 0
+    category: font
+    risk_level: LOW
+
+  - id: otf
+    name: OpenType Font
+    magic_bytes: "4F54544F"
+    offset: 0
+    category: font
+    risk_level: LOW
+
+  - id: woff
+    name: WOFF Font
+    magic_bytes: "774F4646"
+    offset: 0
+    category: font
+    risk_level: LOW
+
+  - id: woff2
+    name: WOFF2 Font
+    magic_bytes: "774F4632"
+    offset: 0
+    category: font
+    risk_level: LOW
+
+  # ── Databases ─────────────────────────────────────────────
+  - id: sqlite
+    name: SQLite Database
+    magic_bytes: "53514C69746520666F726D6174203300"
+    offset: 0
+    category: database
+    risk_level: LOW
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: berkeley_db
+    name: Berkeley DB
+    magic_bytes: "00000000000000000000000000000000"
+    offset: 0
+    category: database
+    risk_level: LOW
+    notes: Detection via hash bucket metadata; use content analysis
+
+  # ── Code / Bytecode ────────────────────────────────────────
+  - id: java_class
+    name: Java Class File
+    magic_bytes: "CAFEBABE"
+    offset: 0
+    category: code
+    risk_level: MEDIUM
+    notes: Java bytecode; check major/minor version at offset 4
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: dex
+    name: DEX Bytecode (Android)
+    magic_bytes: "6465780A30333500"
+    offset: 0
+    category: code
+    risk_level: MEDIUM
+    notes: Dalvik Executable (Android app bytecode)
+
+  - id: wasm
+    name: WebAssembly Binary
+    magic_bytes: "0061736D"
+    offset: 0
+    category: code
+    risk_level: MEDIUM
+    notes: WASM binary module; check version at offset 4
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  # ── Additional Audio Formats ─────────────────────────────
+  - id: opus
+    name: Opus Audio
+    magic_bytes: "4F70757348656164"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: Opus audio in Ogg container; 'OpusHead' at offset 0
+
+  - id: m4a
+    name: MPEG-4 Audio (M4A)
+    magic_bytes: "00000020667479704D344120"
+    offset: 4
+    category: audio
+    risk_level: LOW
+    notes: Apple AAC audio in MP4 container
+
+  - id: midi
+    name: MIDI Audio
+    magic_bytes: "4D546864"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: Standard MIDI file header
+
+  - id: au
+    name: Sun AU Audio
+    magic_bytes: "2E736E64"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: Sun Microsystems AU audio format
+
+  - id: aiff
+    name: AIFF Audio
+    magic_bytes: "464F524D"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: Audio Interchange File Format; check AIFF at offset 8
+
+  - id: amr
+    name: AMR Audio
+    magic_bytes: "2321414D52"
+    offset: 0
+    category: audio
+    risk_level: LOW
+    notes: Adaptive Multi-Rate audio (3GPP)
+
+  # ── Additional Video Formats ─────────────────────────────
+  - id: webm
+    name: WebM Video
+    magic_bytes: "1A45DFA3"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: WebM (Matroska container with VP8/VP9 video)
+
+  - id: ogv
+    name: Ogg Video (OGV)
+    magic_bytes: "4F676753"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: Theora video in Ogg container
+
+  - id: m2ts
+    name: MPEG-2 Transport Stream
+    magic_bytes: "4741"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: Blu-ray MPEG-2 transport stream; 0x47 sync byte
+
+  - id: ts
+    name: MPEG Transport Stream
+    magic_bytes: "47"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: MPEG-2 Transport Stream packet sync
+
+  - id: threegp
+    name: 3GP Video
+    magic_bytes: "0000002066747970336770"
+    offset: 4
+    category: video
+    risk_level: LOW
+    notes: 3GPP multimedia container
+
+  - id: asf
+    name: Advanced Systems Format (WMV/WMA)
+    magic_bytes: "3026B2758E66CF11"
+    offset: 0
+    category: video
+    risk_level: LOW
+    notes: ASF container used by Windows Media
+
+  # ── Additional Document Formats ──────────────────────────
+  - id: doc_ole2
+    name: OLE2 Compound Document (DOC/XLS/PPT)
+    magic_bytes: "D0CF11E0A1B11AE1"
+    offset: 0
+    category: document
+    risk_level: MEDIUM
+    notes: Legacy Microsoft Office format; check for sub-streams
+
+  - id: epub
+    name: EPUB eBook
+    magic_bytes: "504B0304"
+    offset: 0
+    category: document
+    risk_level: LOW
+    notes: EPUB is a ZIP with mimetype at root; check offset 30 for "mimetype"
+    subtypes:
+      - id: epub_mimetype
+        name: EPUB eBook
+        detect: "mimetypeapplication/epub+zip"
+    provenance:
+      contributor: cryptotrace-core
+      review_status: verified
+      review_date: "2026-05-17"
+
+  - id: ps
+    name: PostScript Document
+    magic_bytes: "25525053"
+    offset: 0
+    category: document
+    risk_level: LOW
+    notes: Encapsulated PostScript (EPS) or PostScript file
+
+  - id: xps
+    name: XML Paper Specification (XPS)
+    magic_bytes: "504B0304"
+    offset: 0
+    category: document
+    risk_level: LOW
+    notes: XPS is a ZIP with FixedDocument.fdoc
+
+  # ── Additional Image Formats ─────────────────────────────
+  - id: jpeg2000
+    name: JPEG 2000 Image
+    magic_bytes: "0000000C6A5020200D0A870A"
+    offset: 0
+    category: image
+    risk_level: LOW
+
+  - id: exr
+    name: OpenEXR Image
+    magic_bytes: "762F3101"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: High dynamic range image format by ILM
+
+  - id: dds
+    name: DirectDraw Surface
+    magic_bytes: "44445320"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: DirectX texture container
+
+  - id: psd
+    name: Photoshop Document
+    magic_bytes: "38425053"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: Adobe Photoshop native format
+
+  - id: tga
+    name: Truevision TGA Image
+    magic_bytes: "000200"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: Truevision Targa image; requires length check
+
+  - id: svg
+    name: SVG Image (compressed)
+    magic_bytes: "504B0304"
+    offset: 0
+    category: image
+    risk_level: LOW
+    notes: SVG files inside ZIP (OOXML-style)
+
+  - id: heic
+    name: HEIC Image
+    magic_bytes: "000000206674797068656963"
+    offset: 4
+    category: image
+    risk_level: LOW
+    notes: High Efficiency Image Container (Apple)
+
+  # ── Additional Archive Formats ───────────────────────────
+  - id: gzip_tar
+    name: GZIP-compressed TAR
+    magic_bytes: "1F8B"
+    offset: 0
+    category: archive
+    risk_level: LOW
+
+  - id: lz4_raw
+    name: LZ4 Raw Stream
+    magic_bytes: "04224D18"
+    offset: 0
+    category: compression
+    risk_level: LOW
+
+  - id: zlib_stream
+    name: Zlib Compressed Stream
+    magic_bytes: "78"
+    offset: 0
+    category: compression
+    risk_level: LOW
+    notes: Zlib stream; 0x78 prefix indicates default compression
+    subtypes:
+      - id: zlib_default
+        name: Zlib Default Compression
+        detect: "01"
+      - id: zlib_best
+        name: Zlib Best Compression
+        detect: "DA"
+
+  - id: lha
+    name: LHA/LZH Archive
+    magic_bytes: "2D6C68302D"
+    offset: 2
+    category: archive
+    risk_level: LOW
+    notes: LHA/LZH compressed archive; header starts at offset 2
+
+  - id: cab
+    name: Microsoft Cabinet Archive
+    magic_bytes: "4D534346"
+    offset: 0
+    category: archive
+    risk_level: MEDIUM
+    notes: Windows Installer cabinet file (.cab)
+
+  - id: nsys
+    name: NSIS Installer
+    magic_bytes: "6E536973"
+    offset: 0
+    category: archive
+    risk_level: MEDIUM
+    notes: Nullsoft Scriptable Install System archive
+
+  - id: dmg_hfs
+    name: Apple Disk Image (DMG)
+    magic_bytes: "7801"
+    offset: 56
+    category: disk
+    risk_level: LOW
+    notes: Apple UDIF/DMG disk image; zlib-compressed at offset 56
+
+  # ── More Disk Images ────────────────────────────────────
+  - id: vhd
+    name: Virtual Hard Disk (VHD)
+    magic_bytes: "636F6E6563746978"
+    offset: 0
+    category: disk
+    risk_level: LOW
+    notes: Microsoft VHD; "conectix" signature at offset 0
+
+  - id: vhdx
+    name: Virtual Hard Disk v2 (VHDX)
+    magic_bytes: "7668647866696C65"
+    offset: 0
+    category: disk
+    risk_level: LOW
+    notes: Microsoft VHDX with 64KB headers; "vhdxfile" at offset 0
+
+  - id: qed
+    name: QEMU QED Disk Image
+    magic_bytes: "51454400"
+    offset: 0
+    category: disk
+    risk_level: LOW
+
+  # ── More Executables ────────────────────────────────────
+  - id: pe32
+    name: PE32+ Executable (64-bit)
+    magic_bytes: "4D5A"
+    offset: 0
+    category: executable
+    risk_level: CRITICAL
+    subtypes:
+      - id: pe32_exe
+        name: PE32+ Executable
+        detect: "PE_LF_EXECUTABLE"
+      - id: pe32_dll
+        name: PE32+ DLL
+        detect: "PE_LF_DLL"
+
+  - id: msdos_stub
+    name: MS-DOS Executable
+    magic_bytes: "4D5A"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+    notes: DOS executable stub (may also be PE); check e_lfanew
+
+  - id: elf_s390
+    name: ELF Binary (IBM S/390)
+    magic_bytes: "7F454C46"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+
+  - id: xar
+    name: XAR Archive (macOS)
+    magic_bytes: "78617221"
+    offset: 0
+    category: executable
+    risk_level: MEDIUM
+    notes: macOS XAR (eXtensible ARchive) used by Installer
+
+  - id: universal_binary
+    name: Universal Binary (macOS)
+    magic_bytes: "CAFEBABE"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+    notes: Fat binary with multiple architectures
+
+  - id: java_keystore
+    name: Java KeyStore (JKS)
+    magic_bytes: "FEEDFEED"
+    offset: 0
+    category: cryptographic
+    risk_level: CRITICAL
+    notes: Java keystore containing certificates and private keys
+
+  # ── More Cryptographic ──────────────────────────────────
+  - id: cert_der
+    name: DER X.509 Certificate
+    magic_bytes: "3082"
+    offset: 0
+    category: cryptographic
+    risk_level: LOW
+    notes: DER-encoded X.509 certificate or CRL
+
+  - id: cert_pem
+    name: PEM Certificate
+    magic_bytes: "2D2D2D2D424547494E2043455254494649434154452D2D2D2D"
+    offset: 0
+    category: cryptographic
+    risk_level: LOW
+
+  - id: crl_pem
+    name: PEM CRL
+    magic_bytes: "2D2D2D2D424547494E20584E35322043524C2D2D2D2D"
+    offset: 0
+    category: cryptographic
+    risk_level: LOW
+
+  - id: ssh_key_pub
+    name: SSH Public Key
+    magic_bytes: "656432353535313920"
+    offset: 0
+    category: cryptographic
+    risk_level: MEDIUM
+    notes: "Hex for 'ed25519 ' prefix"
+
+  - id: minisign
+    name: Minisign Signature
+    magic_bytes: "756E7472757374656420636F6D6D656E74"
+    offset: 0
+    category: cryptographic
+    risk_level: LOW
+    notes: Minisign signature comment header
+
+  - id: age
+    name: age Encrypted File
+    magic_bytes: "6167652D656E6372797074696F6E2E6F7267"
+    offset: 0
+    category: cryptographic
+    risk_level: MEDIUM
+    notes: age-encrypted file header
+
+  # ── Game & Data Formats ─────────────────────────────────
+  - id: saf
+    name: Standard Archive Format (Minecraft)
+    magic_bytes: "0A000000633078"
+    offset: 0
+    category: archive
+    risk_level: LOW
+
+  - id: rpkg
+    name: Unity Asset Bundle
+    magic_bytes: "556E6974794673"
+    offset: 0
+    category: archive
+    risk_level: LOW
+
+  # ── Additional Database Formats ─────────────────────────
+  - id: lmdb
+    name: LMDB Environment
+    magic_bytes: "00000000"
+    offset: 0
+    category: database
+    risk_level: LOW
+    notes: LMDB metadata page; detect via environment size at offset 4
+
+  - id: dbase_dbf
+    name: dBase/FoxPro Database
+    magic_bytes: "03"
+    offset: 0
+    category: database
+    risk_level: LOW
+
+  - id: dbase_dbf_memo
+    name: dBase/FoxPro Memo
+    magic_bytes: "F5"
+    offset: 0
+    category: database
+    risk_level: LOW
+
+  # ── Additional Code Formats ─────────────────────────────
+  - id: class_version
+    name: Java Class File (version specific)
+    magic_bytes: "CAFEBABE"
+    offset: 0
+    category: code
+    risk_level: MEDIUM
+
+  - id: keystore_bks
+    name: Bouncy Castle KeyStore (BKS)
+    magic_bytes: "CEFECEFE"
+    offset: 0
+    category: cryptographic
+    risk_level: CRITICAL
+
+  - id: eot
+    name: Embedded OpenType Font
+    magic_bytes: "454F5446"
+    offset: 0
+    category: font
+    risk_level: LOW
+
+  - id: elf_core
+    name: ELF Core Dump
+    magic_bytes: "7F454C46"
+    offset: 0
+    category: executable
+    risk_level: HIGH
+    notes: Core dump with ET_CORE type
+
+  # ── Networking & Container Formats ──────────────────────
+  - id: pcap
+    name: PCAP Network Capture
+    magic_bytes: "D4C3B2A1"
+    offset: 0
+    category: archive
+    risk_level: LOW
+    notes: libpcap savefile; big-endian variant
+
+  - id: pcap_le
+    name: PCAP Network Capture (LE)
+    magic_bytes: "A1B2C3D4"
+    offset: 0
+    category: archive
+    risk_level: LOW
+    notes: libpcap savefile; little-endian
+
+  - id: pcapng
+    name: PCAPNG Network Capture
+    magic_bytes: "0A0D0D0A"
+    offset: 0
+    category: archive
+    risk_level: LOW
+    notes: pcapng (Next Generation) capture format
+
+  - id: dockertar
+    name: Docker Image Layer
+    magic_bytes: "1F8B"
+    offset: 0
+    category: archive
+    risk_level: LOW
+    notes: Docker image layers are gzip-compressed tars
+
+  - id: flatbuffers
+    name: FlatBuffers Binary
+    magic_bytes: "424F554E44"
+    offset: 4
+    category: code
+    risk_level: LOW
+    notes: Google FlatBuffers serialized binary; "BOND" identifier

@@ -48,12 +48,29 @@ pub fn detect_encryption(data: &[u8], entropy: f64) -> Option<EncryptionDetectio
 
     // Generic high-entropy detection (possible encryption or compression)
     if entropy > 7.5 {
-        // Check for block alignment (AES: multiple of 16)
-        let block_aligned = data.len() % 16 == 0;
-        let confidence = if block_aligned { 0.60 } else { 0.55 };
-
+        let len = data.len();
+        // ChaCha20: 64-byte block aligned (typical)
+        // Check before AES because 64 also divides 16, but ChaCha20 is 64-block
+        if len > 0 && len % 64 == 0 && len % 16 != 0 {
+            return Some(EncryptionDetection {
+                algorithm: "ChaCha20 (possible)".to_string(),
+                confidence: 0.50,
+                risk_level: RiskLevel::Unknown,
+            });
+        }
+        // Salsa20: 64-byte blocks with 8-byte nonce prefix
+        if len > 8 && len % 64 == 8 {
+            return Some(EncryptionDetection {
+                algorithm: "Salsa20 (possible)".to_string(),
+                confidence: 0.45,
+                risk_level: RiskLevel::Unknown,
+            });
+        }
+        // AES: 16-byte block aligned
+        let aes_aligned = len % 16 == 0;
+        let confidence = if aes_aligned { 0.60 } else { 0.55 };
         return Some(EncryptionDetection {
-            algorithm: if block_aligned {
+            algorithm: if aes_aligned {
                 "AES (possible)".to_string()
             } else {
                 "ChaCha20 (possible)".to_string()
@@ -83,6 +100,22 @@ mod tests {
         let data = b"-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----\n";
         let result = detect_encryption(data, 0.0).unwrap();
         assert_eq!(result.algorithm, "RSA (private key)");
+    }
+
+    #[test]
+    fn test_chacha20_heuristic() {
+        // ChaCha20: high entropy, not 16-byte aligned → generic fallback
+        let data = vec![0u8; 55]; // 55 bytes, not 16-byte aligned
+        let result = detect_encryption(&data, 7.9).unwrap();
+        assert_eq!(result.algorithm, "ChaCha20 (possible)");
+    }
+
+    #[test]
+    fn test_salsa20_heuristic() {
+        // Salsa20: 64-byte aligned with trailing 8-byte nonce
+        let data = vec![0u8; 72]; // 64 + 8 = 72
+        let result = detect_encryption(&data, 7.9).unwrap();
+        assert_eq!(result.algorithm, "Salsa20 (possible)");
     }
 
     #[test]

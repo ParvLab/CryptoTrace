@@ -31,6 +31,7 @@ nom = "7"
 # Compression
 flate2 = "1"
 brotli = "7"
+bzip2 = "0.5"
 xz2 = "0.1"
 zstd = "0.13"
 
@@ -39,6 +40,9 @@ statrs = "0.17"
 
 # MIME detection (pure Rust, no libmagic)
 tree_magic_mini = "3"
+
+# Async trait support for AI providers
+async-trait = "0.1"
 
 # Logging
 tracing = "0.1"
@@ -54,9 +58,30 @@ serde_yaml = "0.9"
 # Base64 encoding/decoding
 base64 = "0.22"
 
+# CSV parsing for calibration datasets
+csv = "1"
+
+# Random number generation (synthetic data, etc.)
+rand = "0.9"
+
+# LZ4 compression
+lz4_flex = "0.11"
+
+# Platform-level sandboxing (seccomp on Linux, sandbox on macOS)
+libc = "0.2"
+
+# HTTP client for AI providers
+reqwest = { version = "0.12", features = ["json"] }
+
 [dev-dependencies]
 proptest = "1"
 tempfile = "3"
+reqwest = { version = "0.12", features = ["json"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[lib]
+name = "cryptotrace"
+path = "src/lib.rs"
 
 [[bin]]
 name = "cryptotrace"

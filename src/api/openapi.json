@@ -1,0 +1,258 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CryptoTrace REST API",
+    "description": "Cryptographic Fingerprinting & Data Classification Engine — REST API",
+    "version": "0.1.0",
+    "contact": {
+      "name": "CryptoTrace Team",
+      "url": "https://github.com/cryptotrace/cryptotrace"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  },
+  "servers": [
+    { "url": "http://localhost:8080", "description": "Local development" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns service status, engine version, and uptime.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["ok"] },
+                    "engine_version": { "type": "string" },
+                    "signature_db_version": { "type": "string" },
+                    "uptime_seconds": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Version info",
+        "description": "Returns engine and signature database versions.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Version information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engine": { "type": "string" },
+                    "signature_db": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/docs": {
+      "get": {
+        "summary": "OpenAPI specification",
+        "description": "Returns this OpenAPI 3.0 specification document.",
+        "security": [],
+        "responses": {
+          "200": { "description": "OpenAPI spec" }
+        }
+      }
+    },
+    "/analyze": {
+      "post": {
+        "summary": "Analyze input",
+        "description": "Run the detection pipeline on provided input and return results synchronously.",
+        "security": [
+          { "ApiKeyAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Detection result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiError" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "429": { "description": "Rate limited" }
+        }
+      }
+    },
+    "/v1/jobs": {
+      "post": {
+        "summary": "Submit analysis job",
+        "description": "Submit input for asynchronous analysis. Returns a job ID immediately.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AnalyzeRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": { "type": "integer" },
+                    "status": { "type": "string" },
+                    "endpoint": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jobs/{id}": {
+      "get": {
+        "summary": "Get job status and result",
+        "description": "Poll a submitted job. Returns 200 with result when complete.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job info (may include result if completed)"
+          },
+          "404": { "description": "Job not found" }
+        }
+      },
+      "delete": {
+        "summary": "Cancel or remove a job",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Job cancelled or removed" },
+          "404": { "description": "Job not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API key for authentication. Can also be provided as Authorization: Bearer <key>."
+      }
+    },
+    "schemas": {
+      "AnalyzeRequest": {
+        "type": "object",
+        "required": ["input"],
+        "properties": {
+          "input": { "type": "string", "description": "Input string, file path, or base64-encoded data" },
+          "input_type": {
+            "type": "string",
+            "enum": ["string", "file", "base64"],
+            "default": "string"
+          },
+          "context": {
+            "type": "string",
+            "enum": ["forensics", "malware", "password"],
+            "default": "forensics"
+          },
+          "deep": { "type": "boolean", "default": false },
+          "ai": { "type": "boolean", "default": false },
+          "sandbox": { "type": "boolean", "default": false }
+        }
+      },
+      "DetectionResult": {
+        "type": "object",
+        "properties": {
+          "input_hash": { "type": "string" },
+          "source_type": { "type": "string" },
+          "entropy": { "type": "number" },
+          "detected_type": { "type": "string" },
+          "algorithm": { "type": "string", "nullable": true },
+          "confidence": { "type": "number" },
+          "risk_level": { "type": "string" },
+          "weakness": { "type": "string", "nullable": true },
+          "weakness_cve": { "type": "array", "items": { "type": "string" } },
+          "signals": { "$ref": "#/components/schemas/SignalBreakdown" },
+          "primary_drivers": { "type": "array", "items": { "type": "string" } },
+          "conflicting_signals": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "SignalBreakdown": {
+        "type": "object",
+        "properties": {
+          "entropy": { "type": "number" },
+          "byte_distribution": { "type": "number", "nullable": true },
+          "block_alignment": { "type": "number" },
+          "magic_bytes": { "type": "number" },
+          "length_pattern": { "type": "number" },
+          "charset_purity": { "type": "number", "nullable": true },
+          "window_variance": { "type": "number", "nullable": true }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "retry_after_seconds": { "type": "integer", "nullable": true }
+        }
+      }
+    }
+  }
+}

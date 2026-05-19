@@ -4,11 +4,14 @@ pub mod analyzers;
 pub mod providers;
 pub mod intelligence;
 pub mod signatures;
+pub mod format;
+pub mod update;
 pub mod cli;
 pub mod api;
 pub mod reports;
 pub mod cache;
 pub mod workers;
+pub mod jobs;
 pub mod types;
 pub mod error;
 

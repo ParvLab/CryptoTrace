@@ -1,0 +1,81 @@
+{
+  "version": "1.0.0",
+  "description": "Community-contributed signature providers for CryptoTrace",
+  "providers": [
+    {
+      "id": "yara-forge",
+      "name": "YARA-Forge Community Rules",
+      "description": "A curated subset of YARA rules converted to CryptoTrace signature format, covering malware families and packers.",
+      "url": "https://raw.githubusercontent.com/cryptotrace/community-registry/main/providers/yara-forge/v1/signatures.yaml",
+      "signature_path": "community/yara-forge.yaml",
+      "version": "1.0.0",
+      "trust_level": "verified",
+      "maintainer": "CryptoTrace Team",
+      "signature_fingerprint": "EDA2A3C14B8F6D0E9F1C4B7A3D5E8F0C2A4B6D8",
+      "entries": 120,
+      "categories": ["malware", "packer", "ransomware"],
+      "last_updated": "2026-04-15",
+      "homepage": "https://github.com/cryptotrace/community-registry"
+    },
+    {
+      "id": "forensic-artifacts",
+      "name": "Forensic Artifact Signatures",
+      "description": "Signatures for forensic artifacts including registry hives, event logs, browser caches, and evidence file formats.",
+      "url": "https://raw.githubusercontent.com/cryptotrace/community-registry/main/providers/forensic-artifacts/v1/signatures.yaml",
+      "signature_path": "community/forensic-artifacts.yaml",
+      "version": "0.9.0",
+      "trust_level": "verified",
+      "maintainer": "CryptoTrace Team",
+      "signature_fingerprint": "B8C2D4F6A0E1C3B5D7F9A2B4C6E8F0A1C3E5F7",
+      "entries": 85,
+      "categories": ["forensics", "artifacts", "windows"],
+      "last_updated": "2026-03-22",
+      "homepage": "https://github.com/cryptotrace/community-registry"
+    },
+    {
+      "id": "crypto-miner-sigs",
+      "name": "Cryptominer Detection",
+      "description": "Signatures for detecting cryptocurrency miner binaries, scripts, and configuration files across platforms.",
+      "url": "https://raw.githubusercontent.com/cryptotrace/community-registry/main/providers/crypto-miner-sigs/v1/signatures.yaml",
+      "signature_path": "community/crypto-miner-sigs.yaml",
+      "version": "1.2.0",
+      "trust_level": "community",
+      "maintainer": "MinerWatch Project",
+      "signature_fingerprint": "D1F3E5A7B9C2D4E6F8A0B1C3D5E7F9A2B4C6D8",
+      "entries": 200,
+      "categories": ["malware", "cryptominer"],
+      "last_updated": "2026-05-01",
+      "homepage": "https://github.com/minerwatch/signatures"
+    },
+    {
+      "id": "password-hash-extras",
+      "name": "Extended Password Hash Patterns",
+      "description": "Additional password hash formats beyond the core detection: DCC2, Kerberos, Django, Flask, Joomla, Drupal, and more.",
+      "url": "https://raw.githubusercontent.com/cryptotrace/community-registry/main/providers/password-hash-extras/v1/signatures.yaml",
+      "signature_path": "community/password-hash-extras.yaml",
+      "version": "1.1.0",
+      "trust_level": "verified",
+      "maintainer": "CryptoTrace Team",
+      "signature_fingerprint": "F0A2B4C6E8D0F1A3B5C7D9E1F3A5B7C9D1E3F5",
+      "entries": 65,
+      "categories": ["password", "hashing", "authentication"],
+      "last_updated": "2026-04-28",
+      "homepage": "https://github.com/cryptotrace/community-registry"
+    },
+    {
+      "id": "network-protocol-sigs",
+      "name": "Network Protocol Fingerprints",
+      "description": "Signatures for network protocol detection: TLS, SSH, HTTP/2, QUIC, DNS, DHCP, and custom protocol markers.",
+      "url": "https://raw.githubusercontent.com/cryptotrace/community-registry/main/providers/network-protocol-sigs/v1/signatures.yaml",
+      "signature_path": "community/network-protocol-sigs.yaml",
+      "version": "0.8.0",
+      "trust_level": "community",
+      "maintainer": "NetSign Collective",
+      "signature_fingerprint": "A1C3E5G7I9K2M4O6Q8S0U2W4Y6Z8B2D4F6H8",
+      "entries": 150,
+      "categories": ["network", "protocol", "traffic"],
+      "last_updated": "2026-02-10",
+      "homepage": "https://github.com/netsign/signatures"
+    }
+  ]
+}

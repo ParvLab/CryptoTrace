@@ -1,0 +1,2 @@
+This file would contain compressed data in a real deployment.
+Place actual .gz, .bz2, .zst, .xz files here for testing.

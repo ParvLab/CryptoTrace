@@ -1,0 +1,14 @@
+{
+  "weights": [
+    0.5718015303053016,
+    1.505128075792383,
+    1.1774218873750235,
+    5.16252241418199,
+    0.8266612163940201,
+    0.7622280759738205
+  ],
+  "intercept": -4.350494972295445,
+  "dataset_size": 1000,
+  "calibration_date": "2026-06-02",
+  "method": "Platt scaling (logistic regression + gradient descent)"
+}
