@@ -239,7 +239,7 @@ mod tests {
                 confidence_statement: "Confidence is 98%".to_string(),
             }),
             detection_context: crate::types::DetectionContext::Forensics,
-            engine_version: "0.1.0".to_string(),
+            engine_version: "0.2.0".to_string(),
             signature_db_version: "1.0.0".to_string(),
         };
 

@@ -255,7 +255,7 @@ mod tests {
             weakness_cve: vec!["CVE-2013-6623".into()],
             detection_context: DetectionContext::Forensics,
             calibrated: true,
-            engine_version: "0.1.0".into(),
+            engine_version: "0.2.0".into(),
             signature_db_version: "1.0.0".into(),
             primary_drivers: vec!["entropy".into(), "length_pattern".into()],
             ..Default::default()
@@ -350,7 +350,7 @@ mod tests {
         let result = DetectionResult {
             risk_level: RiskLevel::Low,
             input_hash: "x".into(),
-            engine_version: "0.1.0".into(),
+            engine_version: "0.2.0".into(),
             signature_db_version: "1.0.0".into(),
             ..Default::default()
         };
@@ -362,7 +362,7 @@ mod tests {
     fn test_empty_algorithm_omitted() {
         let result = DetectionResult {
             input_hash: "x".into(),
-            engine_version: "0.1.0".into(),
+            engine_version: "0.2.0".into(),
             signature_db_version: "1.0.0".into(),
             ..Default::default()
         };
