@@ -77,7 +77,7 @@ impl Default for SandboxConfig {
 ///
 /// - Windows:   Job Object with memory limit, active process limit, kill-on-close
 /// - Linux:     subprocess with seccomp-bpf (blocks execve, clone, socket, etc.)
-///              + RLIMIT_AS memory enforcement
+///   + RLIMIT_AS memory enforcement
 /// - macOS:     subprocess with sandbox-init (deny network, fs-write, proc-spawn)
 ///
 /// The worker process is a separate binary (`cryptotrace-worker`) that
@@ -275,7 +275,7 @@ fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
             );
             let profile_bytes = profile.as_bytes();
             let mut error: *mut libc::c_char = std::ptr::null_mut();
-            extern "C" {
+            unsafe extern "C" {
                 fn sandbox_init(
                     profile: *const libc::c_char,
                     flags: u64,
@@ -283,21 +283,17 @@ fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
                 ) -> libc::c_int;
                 fn sandbox_free_error(errorbuf: *mut libc::c_char);
             }
-            let ret = unsafe {
-                sandbox_init(
-                    profile_bytes.as_ptr() as *const libc::c_char,
-                    0u64,
-                    &mut error,
-                )
-            };
+            let ret = sandbox_init(
+                profile_bytes.as_ptr() as *const libc::c_char,
+                0u64,
+                &mut error,
+            );
             if ret != 0 {
                 if !error.is_null() {
                     let msg = std::ffi::CStr::from_ptr(error)
                         .to_string_lossy()
                         .into_owned();
-                    unsafe {
-                        sandbox_free_error(error);
-                    }
+                    sandbox_free_error(error);
                     Err(std::io::Error::new(std::io::ErrorKind::Other, msg))
                 } else {
                     Err(std::io::Error::last_os_error())
@@ -332,10 +328,15 @@ fn apply_post_spawn_sandbox(
     use std::ffi::c_void;
     use std::ptr;
 
+    #[allow(clippy::upper_case_acronyms)]
     type HANDLE = *mut c_void;
+    #[allow(clippy::upper_case_acronyms)]
     type BOOL = i32;
+    #[allow(clippy::upper_case_acronyms)]
     type DWORD = u32;
+    #[allow(clippy::upper_case_acronyms)]
     type LPCWSTR = *const u16;
+    #[allow(clippy::upper_case_acronyms)]
     type LPVOID = *mut c_void;
 
     const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
@@ -389,10 +390,7 @@ fn apply_post_spawn_sandbox(
         // Create job object
         let job = CreateJobObjectW(ptr::null(), ptr::null());
         if job.is_null() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to create Windows Job Object",
-            ));
+            return Err(std::io::Error::other("Failed to create Windows Job Object"));
         }
 
         // Configure limits
@@ -426,8 +424,7 @@ fn apply_post_spawn_sandbox(
         );
         if ret == 0 {
             CloseHandle(job);
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "Failed to set Windows Job Object limits",
             ));
         }
@@ -440,8 +437,7 @@ fn apply_post_spawn_sandbox(
         );
         if process.is_null() {
             CloseHandle(job);
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "Failed to open worker process handle for Job Object",
             ));
         }
@@ -450,8 +446,7 @@ fn apply_post_spawn_sandbox(
         CloseHandle(process);
         if ret == 0 {
             CloseHandle(job);
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(std::io::Error::other(
                 "Failed to assign process to Windows Job Object",
             ));
         }

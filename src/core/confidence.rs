@@ -135,11 +135,10 @@ fn compute_conflicting_signals(
                 h.algorithm, entropy
             ));
         }
-        if encoding_detection.is_some() {
+        if let Some(ed) = &encoding_detection {
             conflicts.push(format!(
                 "Type conflict: hash ({}) and encoding ({}) both detected",
-                h.algorithm,
-                encoding_detection.unwrap().encoding_type
+                h.algorithm, ed.encoding_type
             ));
         }
     }
@@ -188,7 +187,7 @@ pub fn build_detection_result(
                 "hash".to_string(),
                 Some(h.algorithm.clone()),
                 Some(h.weakness_flags.join(", ")),
-                h.risk_level.clone(),
+                h.risk_level,
                 match h.algorithm.as_str() {
                     "MD5" => vec!["Replace with bcrypt (cost ≥ 12) or Argon2id.".to_string()],
                     "SHA1" => vec!["Upgrade to SHA256 or stronger.".to_string()],
@@ -247,10 +246,10 @@ pub fn build_detection_result(
         let ext_cves =
             crate::intelligence::risk::build_cve_map("signatures/cve_map.yaml", "cve-db.json");
         for (cve_id, desc) in &ext_cves {
-            if algo.contains(cve_id) || desc.to_lowercase().contains(&algo.to_lowercase()) {
-                if !weakness_cve.contains(cve_id) {
-                    weakness_cve.push(cve_id.clone());
-                }
+            if (algo.contains(cve_id) || desc.to_lowercase().contains(&algo.to_lowercase()))
+                && !weakness_cve.contains(cve_id)
+            {
+                weakness_cve.push(cve_id.clone());
             }
         }
     }
@@ -272,7 +271,7 @@ pub fn build_detection_result(
         sliding_entropy: sliding.cloned(),
         detected_type,
         algorithm,
-        confidence: calibrated_conf.min(1.0).max(0.0),
+        confidence: calibrated_conf.clamp(0.0, 1.0),
         calibrated: is_calibrated,
         calibration_samples: model.as_ref().map(|m| m.dataset_size),
         heuristic_raw: Some(heuristic_confidence),
@@ -303,7 +302,7 @@ mod tests {
     #[test]
     fn test_confidence_bounds() {
         let result = compute_confidence(None, None, 5.0, None);
-        assert!(result >= 0.0 && result <= 1.0);
+        assert!((0.0..=1.0).contains(&result));
     }
 
     #[test]

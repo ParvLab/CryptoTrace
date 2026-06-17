@@ -97,12 +97,12 @@ proptest! {
     fn test_encoding_negative_cases(input: String) {
         if input.chars().all(|c| c.is_ascii_alphanumeric() || c.is_ascii_punctuation()) {
             if let Some(result) = cryptotrace::core::encoding::detect_encoding(&input) {
-                if input.contains('=') && result.encoding_type == "Base64" {
-                    if let Ok(_) = base64::Engine::decode(
+                if input.contains('=') && result.encoding_type == "Base64"
+                    && base64::Engine::decode(
                         &base64::engine::general_purpose::STANDARD,
                         input.as_bytes(),
-                    ) {
-                    }
+                    ).is_ok()
+                {
                 }
             }
         }

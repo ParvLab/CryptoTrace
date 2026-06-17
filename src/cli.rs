@@ -187,10 +187,10 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
             result.detection_context = detection_context;
 
             // Recursive analysis
-            if *deep && !result.algorithm.as_deref().map_or(true, |a| a.is_empty()) {
+            if *deep && !result.algorithm.as_deref().is_none_or(|a| a.is_empty()) {
                 let config = crate::analyzers::recursive::RecursiveConfig::default();
                 let layers = crate::analyzers::recursive::analyze_recursive(
-                    &result.input_hash.as_bytes(),
+                    result.input_hash.as_bytes(),
                     &config,
                 )?;
                 // Convert recursive layers to DetectionResult layers
@@ -261,7 +261,7 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                 );
             } else if let Some(path) = from_file {
                 let import_path = std::path::Path::new(path);
-                let sig_path = verify.as_ref().map(|s| std::path::Path::new(s));
+                let sig_path = verify.as_ref().map(std::path::Path::new);
                 update_mgr.import_local(import_path, sig_path)?;
                 println!("Imported signature DB: {}", update_mgr.current_version());
             } else {
@@ -324,7 +324,7 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                         println!("AI cache TTL days:     {}", cache.ttl_days);
                         println!("AI cache max entries:  {}", cache.max_entries);
                     }
-                    println!("Sandbox enabled:       {}", false);
+                    println!("Sandbox enabled:       false");
                     println!("Sandbox max memory:    512 MB");
                     println!("Sandbox max concurrent: 4");
                     println!("Sandbox timeout:       30s");
@@ -384,7 +384,7 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                     let mut wtr = csv::Writer::from_path(output).map_err(|e| {
                         crate::error::CryptoTraceError::Other(format!("Cannot create CSV: {}", e))
                     })?;
-                    wtr.write_record(&[
+                    wtr.write_record([
                         "entropy",
                         "block_alignment",
                         "magic_bytes",
@@ -477,7 +477,7 @@ pub fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
         if let Ok(model) = std::env::var("ANTHROPIC_MODEL") {
             config.model = model;
         }
-    } else if std::env::var("AI_PROVIDER").map_or(false, |v| v == "local") {
+    } else if std::env::var("AI_PROVIDER").is_ok_and(|v| v == "local") {
         config.provider_type = "local".to_string();
         config.base_url = std::env::var("AI_BASE_URL").ok();
         if let Ok(model) = std::env::var("AI_MODEL") {

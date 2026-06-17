@@ -18,9 +18,11 @@ impl WorkerPool {
         input: &[u8],
         timeout: Duration,
     ) -> Result<Vec<u8>> {
-        let mut config = SandboxConfig::default();
-        config.enabled = true;
-        config.timeout_seconds = timeout.as_secs().max(1);
+        let config = SandboxConfig {
+            enabled: true,
+            timeout_seconds: timeout.as_secs().max(1),
+            ..Default::default()
+        };
         let sandbox = crate::sanitization::sandbox::Sandbox::new(config);
         sandbox.run_worker(operation, input)
     }

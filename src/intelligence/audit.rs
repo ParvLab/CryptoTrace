@@ -31,7 +31,7 @@ static AUDIT_FILE: std::sync::LazyLock<Mutex<Option<std::fs::File>>> =
 fn ensure_audit_file() -> Option<std::fs::File> {
     let mut guard = AUDIT_FILE.lock().ok()?;
     if guard.is_some() {
-        return guard.as_ref().map(|f| f.try_clone().ok()).flatten();
+        return guard.as_ref().and_then(|f| f.try_clone().ok());
     }
     let dir = audit_dir();
     let _ = std::fs::create_dir_all(&dir);

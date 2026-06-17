@@ -1,7 +1,7 @@
 # CryptoTrace — cargo-deny configuration
 [advisories]
 vulnerability = "deny"
-unmaintained = "warn"
+unmaintained = "all"
 notice = "warn"
 yanked = "warn"
 ignore = []

@@ -116,7 +116,7 @@ pub fn train(
             grad_w[i] = grad_w[i] / n + l2_lambda * weights[i];
             weights[i] -= learning_rate * grad_w[i];
         }
-        grad_b = grad_b / n;
+        grad_b /= n;
         intercept -= learning_rate * grad_b;
     }
 
@@ -346,7 +346,7 @@ mod tests {
             window_variance: Some(0.0),
         };
         let p = predict_proba(&model, &signals);
-        assert!(p >= 0.0 && p <= 1.0);
+        assert!((0.0..=1.0).contains(&p));
     }
 
     #[test]

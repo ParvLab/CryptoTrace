@@ -125,10 +125,7 @@ fn detect_hex(input: &str) -> Option<EncodingDetection> {
     if input.is_empty() || input.len() % 2 != 0 {
         return None;
     }
-    if !input
-        .chars()
-        .all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'))
-    {
+    if !input.chars().all(|c: char| c.is_ascii_hexdigit()) {
         return None;
     }
 
@@ -302,7 +299,7 @@ fn detect_base91(input: &str) -> Option<EncodingDetection> {
     }
     let is_valid = |c: char| {
         let b = c as u8;
-        b >= 0x21 && b <= 0x7E && c != '\'' && c != '-'
+        (0x21..=0x7E).contains(&b) && c != '\'' && c != '-'
     };
     let count_valid = input.chars().filter(|c| is_valid(*c)).count();
     let valid_ratio = count_valid as f64 / input.len() as f64;

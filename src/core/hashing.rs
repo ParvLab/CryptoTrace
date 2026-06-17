@@ -28,9 +28,7 @@ pub fn detect_hash(input: &str) -> Option<HashDetection> {
 
 fn try_detect(s: &str) -> Option<HashDetection> {
     let len = s.len();
-    let is_hex = s
-        .chars()
-        .all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'));
+    let is_hex = s.chars().all(|c: char| c.is_ascii_hexdigit());
 
     if !is_hex && !is_prefix_based(s) {
         return None;

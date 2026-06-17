@@ -12,7 +12,7 @@ fn compression_bomb_payload() -> Vec<u8> {
     // GZIP-compress 10 MB of repeated 'A' bytes.
     // The compressed output should be tiny (well under 100 KB), giving
     // an expansion ratio > 100× when decompressed.
-    let huge: Vec<u8> = std::iter::repeat(b'A').take(10_000_000).collect();
+    let huge: Vec<u8> = std::iter::repeat_n(b'A', 10_000_000).collect();
     let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::best());
     use std::io::Write;
     encoder.write_all(&huge).unwrap();

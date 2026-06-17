@@ -153,7 +153,7 @@ mod tests {
         let data = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03";
         let matches = match_signatures(data, &reg);
         // Multiple entries may match GZIP magic (gzip, gzip_tar, dockertar)
-        assert!(matches.len() >= 1);
+        assert!(!matches.is_empty());
         assert!(matches.iter().any(|m| m.id == "gzip"));
     }
 
@@ -162,7 +162,7 @@ mod tests {
         let reg = default_registry().unwrap();
         let data = b"%PDF-1.4";
         let matches = match_signatures(data, &reg);
-        assert!(matches.len() >= 1);
+        assert!(!matches.is_empty());
         assert!(matches.iter().any(|m| m.id == "pdf"));
     }
 
@@ -171,7 +171,7 @@ mod tests {
         let reg = default_registry().unwrap();
         let data = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR";
         let matches = match_signatures(data, &reg);
-        assert!(matches.len() >= 1);
+        assert!(!matches.is_empty());
         assert!(matches.iter().any(|m| m.id == "png"));
     }
 
@@ -181,7 +181,7 @@ mod tests {
         let data = b"\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00";
         let matches = match_signatures(data, &reg);
         // ELF magic matches elf, elf_s390, elf_core
-        assert!(matches.len() >= 1);
+        assert!(!matches.is_empty());
         assert!(matches.iter().any(|m| m.id == "elf"));
     }
 
@@ -191,7 +191,7 @@ mod tests {
         let data = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00";
         let matches = match_signatures(data, &reg);
         // MZ magic matches pe, pe32, msdos_stub
-        assert!(matches.len() >= 1);
+        assert!(!matches.is_empty());
         assert!(matches.iter().any(|m| m.id == "pe"));
     }
 

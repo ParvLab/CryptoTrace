@@ -2,21 +2,11 @@ use crate::error::{CryptoTraceError, Result};
 use std::collections::HashMap;
 
 /// Configuration for threat intelligence providers.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ThreatIntelConfig {
     pub vt_api_key: Option<String>,
     pub yara_rules_path: Option<String>,
     pub enable_scan: bool,
-}
-
-impl Default for ThreatIntelConfig {
-    fn default() -> Self {
-        Self {
-            vt_api_key: None,
-            yara_rules_path: None,
-            enable_scan: false,
-        }
-    }
 }
 
 /// A threat intelligence report for a given hash or file.
@@ -95,9 +85,7 @@ pub async fn query_virustotal(hash: &str, api_key: &str) -> Result<ThreatReport>
         total_scanners: total as u32,
         malicious: positives > 0,
         source: "VirusTotal".to_string(),
-        scan_date: attributes["last_analysis_date"]
-            .as_i64()
-            .map(|ts| unix_to_iso(ts)),
+        scan_date: attributes["last_analysis_date"].as_i64().map(unix_to_iso),
         threat_labels: {
             if labels.len() > 10 {
                 labels.truncate(10);

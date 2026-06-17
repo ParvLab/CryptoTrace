@@ -101,7 +101,7 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
 
         // Check expansion ratio
         if let Some(ref decoded) = decoded {
-            if !decoded.is_empty() && current_data.len() > 0 {
+            if !decoded.is_empty() && !current_data.is_empty() {
                 let ratio = decoded.len() as f64 / current_data.len() as f64;
                 if ratio > config.max_expansion_ratio {
                     return Err(CryptoTraceError::CompressionBomb {
@@ -113,7 +113,7 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
         }
 
         let expansion_ratio = decoded.as_ref().map(|d| {
-            if current_data.len() > 0 {
+            if !current_data.is_empty() {
                 d.len() as f64 / current_data.len() as f64
             } else {
                 1.0

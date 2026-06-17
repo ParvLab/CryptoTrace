@@ -11,6 +11,12 @@ pub struct InputGuard {
     allowed_base_dir: Option<PathBuf>,
 }
 
+impl Default for InputGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InputGuard {
     pub fn new() -> Self {
         Self {

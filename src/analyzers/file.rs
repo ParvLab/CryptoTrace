@@ -152,7 +152,7 @@ mod tests {
         let result = analyze_bytes(b"%PDF-1.4\n...", crate::types::SourceType::File).unwrap();
         assert_eq!(result.detected_type, "document");
         assert_eq!(result.algorithm.as_deref(), Some("pdf"));
-        assert!(result.signals.map_or(false, |s| s.magic_bytes > 0.5));
+        assert!(result.signals.is_some_and(|s| s.magic_bytes > 0.5));
     }
 
     #[test]

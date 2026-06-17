@@ -47,7 +47,7 @@ pub fn resolve_risk_level(
     overrides: &HashMap<String, RiskLevel>,
 ) -> (RiskLevel, Vec<String>) {
     if let Some(overridden) = overrides.get(algorithm) {
-        return (overridden.clone(), vec![]);
+        return (*overridden, vec![]);
     }
     default_risk_level(algorithm)
 }
@@ -93,6 +93,7 @@ pub fn load_cve_yaml_database(path: &str) -> HashMap<String, String> {
 }
 
 #[derive(serde::Deserialize)]
+#[allow(dead_code)]
 struct CveMapFile {
     version: String,
     cves: Vec<CveEntry>,
@@ -102,6 +103,7 @@ struct CveMapFile {
 struct CveEntry {
     algorithm: String,
     cve_ids: Vec<String>,
+    #[allow(dead_code)]
     severity: String,
     cvss_v3_base: Option<f64>,
     description: String,

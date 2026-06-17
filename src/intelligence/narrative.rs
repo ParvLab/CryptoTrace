@@ -68,7 +68,7 @@ fn extract_field(
             if trimmed.is_empty() || contains_hallucination(&trimmed) {
                 fallback.to_string()
             } else {
-                validate(&trimmed).unwrap_or_else(|| trimmed)
+                validate(&trimmed).unwrap_or(trimmed)
             }
         }
         _ => fallback.to_string(),
@@ -105,10 +105,7 @@ fn contains_hallucination(text: &str) -> bool {
 
 /// Validate summary: max 2 sentences, no hallucinated algorithms not in known list.
 fn validate_summary(s: &str) -> Option<String> {
-    let sentence_count = s
-        .matches(|c: char| c == '.' || c == '!' || c == '?')
-        .count()
-        .max(1);
+    let sentence_count = s.matches(['.', '!', '?']).count().max(1);
     if sentence_count > 3 {
         return None; // Allow up to 3 sentences
     }
@@ -167,6 +164,7 @@ fn build_fallback(reason: &str) -> Result<AiNarrative> {
 }
 
 /// Build a constrained prompt from detection fields (no raw input bytes).
+#[allow(clippy::too_many_arguments)]
 pub fn build_prompt(
     algorithm: Option<&str>,
     detected_type: &str,

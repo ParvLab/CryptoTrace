@@ -81,12 +81,11 @@ pub fn format_tree_string(hierarchy: &FormatHierarchy) -> String {
 /// Detect ZIP subtype by looking for characteristic files.
 fn detect_subtype<'a>(entry: &'a MagicEntry, data: &[u8]) -> Option<&'a SubtypeEntry> {
     let text = String::from_utf8_lossy(data);
-    for sub in &entry.subtypes {
-        if text.contains(&sub.detect) {
-            return Some(sub);
-        }
-    }
-    None
+    entry
+        .subtypes
+        .iter()
+        .find(|&sub| text.contains(&sub.detect))
+        .map(|v| v as _)
 }
 
 /// PE subsystem detection from the optional header.
