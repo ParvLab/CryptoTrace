@@ -76,6 +76,7 @@ jobs:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     needs: [build]
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -89,6 +90,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [build]
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v4
 
