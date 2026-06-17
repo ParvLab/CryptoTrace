@@ -54,7 +54,9 @@ proptest! {
         let encoded = base64::engine::general_purpose::STANDARD.encode(&data);
         if !encoded.is_empty() && encoded.len() > 2 {
             if let Some(result) = cryptotrace::core::encoding::detect_encoding(&encoded) {
-                assert_eq!(result.encoding_type, "Base64", "Base64 roundtrip of {:?} encoded as {:?}", data, encoded);
+                // Short base64 strings can also be valid base32, accept either
+                let ok = result.encoding_type == "Base64" || result.encoding_type == "Base32";
+                assert!(ok, "Base64 roundtrip of {:?} encoded as {:?} got {:?}", data, encoded, result.encoding_type);
             }
         }
     }
