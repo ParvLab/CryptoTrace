@@ -5,6 +5,12 @@
 ///
 /// # LEEF Format (IBM QRadar Log Event Extended Format)
 /// `LEEF:2.0|Vendor|Product|Version|EventID|Extension`
+///
+/// # Syslog Transport
+/// Supports both UDP and TCP syslog via environment configuration:
+/// - `SIEM_SYSLOG_ADDR` — host:port (e.g. `192.168.1.100:514`)
+/// - `SIEM_SYSLOG_PROTO` — `udp` (default) or `tcp`
+/// - `SIEM_SYSLOG_FORMAT` — `cef` (default) or `leef`
 
 use crate::types::DetectionResult;
 
@@ -117,6 +123,85 @@ fn escape_leef_value(s: &str) -> String {
         }
     }
     out
+}
+
+/// Syslog transport configuration.
+pub struct SyslogConfig {
+    pub addr: String,
+    pub protocol: SyslogProtocol,
+    pub format: SyslogFormat,
+}
+
+impl Default for SyslogConfig {
+    fn default() -> Self {
+        Self {
+            addr: std::env::var("SIEM_SYSLOG_ADDR").unwrap_or_else(|_| "127.0.0.1:514".to_string()),
+            protocol: match std::env::var("SIEM_SYSLOG_PROTO").as_deref() {
+                Ok("tcp") => SyslogProtocol::Tcp,
+                _ => SyslogProtocol::Udp,
+            },
+            format: match std::env::var("SIEM_SYSLOG_FORMAT").as_deref() {
+                Ok("leef") => SyslogFormat::Leef,
+                _ => SyslogFormat::Cef,
+            },
+        }
+    }
+}
+
+pub enum SyslogProtocol {
+    Udp,
+    Tcp,
+}
+
+pub enum SyslogFormat {
+    Cef,
+    Leef,
+}
+
+/// Send a DetectionResult to a syslog server.
+pub async fn send_to_syslog(result: &DetectionResult) -> Result<(), String> {
+    let config = SyslogConfig::default();
+    send_to_syslog_with_config(result, &config).await
+}
+
+/// Send a DetectionResult to a syslog server with explicit configuration.
+pub async fn send_to_syslog_with_config(result: &DetectionResult, config: &SyslogConfig) -> Result<(), String> {
+    let message = match config.format {
+        SyslogFormat::Cef => format_cef(result),
+        SyslogFormat::Leef => format_leef(result),
+    };
+
+    match config.protocol {
+        SyslogProtocol::Udp => send_udp(&config.addr, &message).await,
+        SyslogProtocol::Tcp => send_tcp(&config.addr, &message).await,
+    }
+}
+
+async fn send_udp(addr: &str, message: &str) -> Result<(), String> {
+    let socket = tokio::net::UdpSocket::bind("0.0.0.0:0")
+        .await
+        .map_err(|e| format!("Failed to bind UDP socket: {}", e))?;
+    socket
+        .send_to(message.as_bytes(), addr)
+        .await
+        .map_err(|e| format!("Failed to send UDP syslog: {}", e))?;
+    Ok(())
+}
+
+async fn send_tcp(addr: &str, message: &str) -> Result<(), String> {
+    let mut stream = tokio::net::TcpStream::connect(addr)
+        .await
+        .map_err(|e| format!("Failed to connect TCP syslog: {}", e))?;
+    use tokio::io::AsyncWriteExt;
+    stream
+        .write_all(message.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to send TCP syslog: {}", e))?;
+    stream
+        .write_all(b"\n")
+        .await
+        .map_err(|e| format!("Failed to write TCP syslog newline: {}", e))?;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -24,6 +24,17 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+      - name: Check advisories, licenses, and bans
+        run: cargo deny check
+
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -39,13 +50,26 @@ jobs:
         run: cargo test
 
   msrv:
-    name: MSRV check
+    name: MSRV (build + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.85.0
       - name: Build
-        run: cargo build
+        run: cargo build --all-targets
+      - name: Test
+        run: cargo test
+
+  bench:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build benchmarks
+        run: cargo bench --no-run
+      - name: Record benchmark metadata
+        run: echo "Benchmarks built successfully (bench results not saved in CI)"
 
   fuzz:
     name: Fuzz smoke test (100K)

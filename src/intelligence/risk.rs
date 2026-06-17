@@ -79,19 +79,45 @@ pub fn load_cve_yaml_database(path: &str) -> HashMap<String, String> {
 }
 
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
 struct CveMapFile {
     version: String,
     cves: Vec<CveEntry>,
 }
 
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
 struct CveEntry {
     algorithm: String,
     cve_ids: Vec<String>,
     severity: String,
+    cvss_v3_base: Option<f64>,
     description: String,
+}
+
+/// Build a map of algorithm → CVSS v3 base score.
+pub fn load_cvss_scores(yaml_path: &str) -> HashMap<String, f64> {
+    if let Ok(content) = std::fs::read_to_string(yaml_path) {
+        if let Ok(parsed) = serde_yaml::from_str::<CveMapFile>(&content) {
+            return parsed.cves.iter()
+                .filter_map(|e| e.cvss_v3_base.map(|s| (e.algorithm.clone(), s)))
+                .collect();
+        }
+    }
+    HashMap::new()
+}
+
+/// Return the CVSS v3 base score for a given algorithm.
+pub fn cvss_score_for_algorithm(algorithm: &str, yaml_path: &str) -> Option<f64> {
+    let scores = load_cvss_scores(yaml_path);
+    scores.get(algorithm).copied()
+}
+
+/// Human-readable CVSS severity label from numeric score.
+pub fn cvss_severity_label(score: f64) -> &'static str {
+    if score >= 9.0 { "CRITICAL" }
+    else if score >= 7.0 { "HIGH" }
+    else if score >= 4.0 { "MEDIUM" }
+    else if score > 0.0 { "LOW" }
+    else { "NONE" }
 }
 
 /// Helper: build a combined CVE map from both sources.

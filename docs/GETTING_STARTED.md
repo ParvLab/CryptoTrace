@@ -100,6 +100,5 @@ cp cryptotrace.toml.example cryptotrace.toml
 ## Next steps
 
 - Read the [CLI Reference](CLI_REFERENCE.md) for all commands
-- Read the [API Reference](API_REFERENCE.md) for REST API usage
 - Read the [Air-Gap Guide](AIR_GAP_GUIDE.md) for offline deployment
 - Read [Signal Attribution](SIGNAL_ATTRIBUTION.md) to understand confidence scoring

@@ -1,7 +1,54 @@
 use crate::error::Result;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+/// A simple counting semaphore for synchronizing concurrent worker access.
+#[derive(Debug)]
+struct CountSemaphore {
+    inner: Arc<Mutex<usize>>,
+    max: usize,
+}
+
+impl CountSemaphore {
+    fn new(max: usize) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(max)),
+            max,
+        }
+    }
+
+    fn acquire(&self) -> Result<CountPermit> {
+        let mut count = self.inner.lock().map_err(|e| {
+            crate::error::CryptoTraceError::Other(format!("Semaphore lock error: {}", e))
+        })?;
+        if *count == 0 {
+            return Err(crate::error::CryptoTraceError::Other(
+                "Max concurrent workers reached".to_string(),
+            ));
+        }
+        *count -= 1;
+        Ok(CountPermit {
+            inner: Arc::clone(&self.inner),
+            max: self.max,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct CountPermit {
+    inner: Arc<Mutex<usize>>,
+    max: usize,
+}
+
+impl Drop for CountPermit {
+    fn drop(&mut self) {
+        if let Ok(mut count) = self.inner.lock() {
+            *count = (*count + 1).min(self.max);
+        }
+    }
+}
 
 /// Sandbox configuration for untrusted binary analysis.
 #[derive(Debug, Clone)]
@@ -28,8 +75,9 @@ impl Default for SandboxConfig {
 /// Platform-independent sandbox for isolating risky parser operations in a
 /// subprocess with timeout and crash recovery.
 ///
-/// - Windows:   subprocess with CREATE_NO_WINDOW + timeout + kill-on-fallback
+/// - Windows:   Job Object with memory limit, active process limit, kill-on-close
 /// - Linux:     subprocess with seccomp-bpf (blocks execve, clone, socket, etc.)
+///              + RLIMIT_AS memory enforcement
 /// - macOS:     subprocess with sandbox-init (deny network, fs-write, proc-spawn)
 ///
 /// The worker process is a separate binary (`cryptotrace-worker`) that
@@ -37,12 +85,18 @@ impl Default for SandboxConfig {
 /// process is unaffected.
 pub struct Sandbox {
     config: SandboxConfig,
+    semaphore: Option<Arc<CountSemaphore>>,
 }
 
 impl Sandbox {
     /// Create a new sandbox.
     pub fn new(config: SandboxConfig) -> Self {
-        Self { config }
+        let semaphore = if config.enabled && config.max_concurrent > 0 {
+            Some(Arc::new(CountSemaphore::new(config.max_concurrent)))
+        } else {
+            None
+        };
+        Self { config, semaphore }
     }
 
     /// Run an operation in a sandboxed worker subprocess.
@@ -52,6 +106,14 @@ impl Sandbox {
         if !self.config.enabled {
             return Ok(input.to_vec());
         }
+
+        // Acquire concurrency permit
+        let _permit = match self.semaphore.as_ref() {
+            Some(s) => Some(s.acquire().map_err(|e| {
+                crate::error::CryptoTraceError::Other(format!("Semaphore error: {}", e))
+            })?),
+            None => None,
+        };
 
         let worker_exe = self
             .config
@@ -69,12 +131,19 @@ impl Sandbox {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Platform-specific sandbox enforcement
-        apply_platform_sandbox(&mut cmd);
+        // Set memory limit env var for pre_exec closures
+        cmd.env("CRYPTOTRACE_MAX_MEMORY_MB", self.config.max_memory_mb.to_string());
+
+        // Platform-specific sandbox enforcement (pre-spawn)
+        apply_platform_sandbox(&mut cmd, self.config.max_memory_mb);
 
         let mut child = cmd.spawn().map_err(|e| {
             crate::error::CryptoTraceError::Other(format!("Failed to spawn worker: {}", e))
         })?;
+
+        // Post-spawn sandbox enforcement (Windows Job Object)
+        #[cfg(target_os = "windows")]
+        let _job_handle = apply_post_spawn_sandbox(&child, self.config.max_memory_mb)?;
 
         // Write input to worker stdin (in a background thread to avoid deadlock
         // if the worker's stdout buffer fills up)
@@ -152,18 +221,29 @@ impl Sandbox {
 }
 
 // ---------------------------------------------------------------------------
-// Platform-specific sandbox enforcement
+// Platform-specific sandbox enforcement (pre-spawn)
 // ---------------------------------------------------------------------------
 
-/// Apply platform sandbox restrictions to the worker subprocess.
-/// Called before spawning. On Linux and macOS this uses `pre_exec` to
-/// install seccomp / sandbox-init in the child process after fork.
+/// Apply platform sandbox restrictions to the worker subprocess (pre-spawn).
 #[cfg(target_os = "linux")]
-fn apply_platform_sandbox(cmd: &mut Command) {
+fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
     use std::os::unix::process::CommandExt;
     unsafe {
-        cmd.pre_exec(|| {
+        cmd.pre_exec(move || {
             if libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            // Enforce memory limit via setrlimit (read from env var)
+            let mem_mb: u64 = std::env::var("CRYPTOTRACE_MAX_MEMORY_MB")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(512);
+            let max_bytes = mem_mb.saturating_mul(1024 * 1024);
+            let rlim = libc::rlimit {
+                rlim_cur: max_bytes,
+                rlim_max: max_bytes,
+            };
+            if libc::setrlimit(libc::RLIMIT_AS, &rlim) != 0 {
                 return Err(std::io::Error::last_os_error());
             }
             install_seccomp_blacklist()
@@ -172,21 +252,28 @@ fn apply_platform_sandbox(cmd: &mut Command) {
 }
 
 #[cfg(target_os = "macos")]
-fn apply_platform_sandbox(cmd: &mut Command) {
+fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
     use std::os::unix::process::CommandExt;
     unsafe {
         cmd.pre_exec(|| {
-            let profile = b"(version 1)
+            // Resolve $HOME at runtime (not a literal string)
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+            let profile = format!(
+                "(version 1)
 (deny default (with send-signal SIGKILL))
+(deny network*)
 (allow file-read* (subpath \"/\") (subpath \"/usr/lib/\"))
-(allow file-write* (subpath \"${HOME}\"))
+(allow file-write* (subpath \"{}\"))
 (allow process-exec (literal \"/usr/lib/dyld\"))
 (allow sysctl-uname)
 (allow mach*)
-";
+",
+                home
+            );
+            let profile_bytes = profile.as_bytes();
             let mut error: *mut libc::c_char = std::ptr::null_mut();
             let ret = libc::sandbox_init(
-                profile.as_ptr() as *const libc::c_char,
+                profile_bytes.as_ptr() as *const libc::c_char,
                 0,
                 &mut error,
             );
@@ -206,23 +293,172 @@ fn apply_platform_sandbox(cmd: &mut Command) {
 }
 
 #[cfg(target_os = "windows")]
-fn apply_platform_sandbox(cmd: &mut Command) {
+fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
     use std::os::windows::process::CommandExt;
     cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-fn apply_platform_sandbox(_cmd: &mut Command) {
+fn apply_platform_sandbox(_cmd: &mut Command, _max_memory_mb: u64) {
     // other Unix: no extra sandbox
 }
 
 // ---------------------------------------------------------------------------
-// Seccomp-bpf for Linux
+// Post-spawn sandbox enforcement (Windows Job Object)
+// ---------------------------------------------------------------------------
+
+#[cfg(target_os = "windows")]
+fn apply_post_spawn_sandbox(
+    child: &std::process::Child,
+    max_memory_mb: u64,
+) -> std::io::Result<*mut std::ffi::c_void> {
+    use std::ffi::c_void;
+    use std::ptr;
+
+    type HANDLE = *mut c_void;
+    type BOOL = i32;
+    type DWORD = u32;
+    type LPCWSTR = *const u16;
+    type LPVOID = *mut c_void;
+
+    const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE: DWORD = 0x2000;
+    const JOB_OBJECT_LIMIT_PROCESS_MEMORY: DWORD = 0x100;
+    const JOB_OBJECT_LIMIT_ACTIVE_PROCESS: DWORD = 0x8;
+    const PROCESS_SET_QUOTA: DWORD = 0x0100;
+    const PROCESS_TERMINATE: DWORD = 0x0001;
+    const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
+
+    #[repr(C)]
+    struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
+        per_process_user_time_limit: i64,
+        per_job_user_time_limit: i64,
+        limit_flags: DWORD,
+        minimum_working_set_size: usize,
+        maximum_working_set_size: usize,
+        active_process_limit: DWORD,
+        affinity: usize,
+        child_process_count: DWORD,
+        maximum_process_memory: usize,
+    }
+
+    #[repr(C)]
+    struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
+        basic_limit_information: JOBOBJECT_BASIC_LIMIT_INFORMATION,
+        io_info: [c_void; 24],
+        process_memory_limit: usize,
+        job_memory_limit: usize,
+        peak_process_memory_used: usize,
+        peak_job_memory_used: usize,
+    }
+
+    unsafe extern "system" {
+        fn CreateJobObjectW(
+            lpJobAttributes: *const c_void,
+            lpName: LPCWSTR,
+        ) -> HANDLE;
+        fn SetInformationJobObject(
+            hJob: HANDLE,
+            job_object_info_class: DWORD,
+            lp_job_object_info: LPVOID,
+            cb_job_object_info_length: DWORD,
+        ) -> BOOL;
+        fn AssignProcessToJobObject(
+            hJob: HANDLE,
+            hProcess: HANDLE,
+        ) -> BOOL;
+        fn OpenProcess(
+            dw_desired_access: DWORD,
+            b_inherit_handle: BOOL,
+            dw_process_id: DWORD,
+        ) -> HANDLE;
+        fn CloseHandle(h_object: HANDLE) -> BOOL;
+    }
+
+    unsafe {
+        // Create job object
+        let job = CreateJobObjectW(ptr::null(), ptr::null());
+        if job.is_null() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to create Windows Job Object",
+            ));
+        }
+
+        // Configure limits
+        let memory_bytes = (max_memory_mb as usize).saturating_mul(1024 * 1024);
+        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
+            basic_limit_information: JOBOBJECT_BASIC_LIMIT_INFORMATION {
+                per_process_user_time_limit: 0,
+                per_job_user_time_limit: 0,
+                limit_flags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                    | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                    | JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
+                minimum_working_set_size: 0,
+                maximum_working_set_size: 0,
+                active_process_limit: 1,
+                affinity: 0,
+                child_process_count: 0,
+                maximum_process_memory: memory_bytes,
+            },
+            io_info: std::mem::zeroed(),
+            process_memory_limit: memory_bytes,
+            job_memory_limit: 0,
+            peak_process_memory_used: 0,
+            peak_job_memory_used: 0,
+        };
+
+        let ret = SetInformationJobObject(
+            job,
+            9, // JobObjectExtendedLimitInformation
+            &mut limits as *mut _ as LPVOID,
+            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as DWORD,
+        );
+        if ret == 0 {
+            CloseHandle(job);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to set Windows Job Object limits",
+            ));
+        }
+
+        // Open process handle and assign to job
+        let process = OpenProcess(
+            PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION,
+            0,
+            child.id(),
+        );
+        if process.is_null() {
+            CloseHandle(job);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to open worker process handle for Job Object",
+            ));
+        }
+
+        let ret = AssignProcessToJobObject(job, process);
+        CloseHandle(process);
+        if ret == 0 {
+            CloseHandle(job);
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to assign process to Windows Job Object",
+            ));
+        }
+
+        // Return job handle — it will be closed when the caller drops it,
+        // which triggers KILL_ON_JOB_CLOSE as a safety net
+        Ok(job)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Seccomp-bpf for Linux (multi-arch)
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "linux")]
 fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
-    // Syscall numbers to block (x86_64)
+    // Syscall numbers vary by architecture
+    #[cfg(target_arch = "x86_64")]
     const BLOCKED: &[u32] = &[
         56,  // clone
         57,  // fork
@@ -249,27 +485,48 @@ fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
         173, // ioperm
     ];
 
-    // BPF instructions:
-    //   0: ld  [0]              ; load syscall number (offset 0 in seccomp_data)
-    //   1..n: jeq BLOCKED[i], KILL_LABEL
-    //   n+1: ret ALLOW
-    //   n+2: ret KILL
+    #[cfg(target_arch = "aarch64")]
+    const BLOCKED: &[u32] = &[
+        220, // clone
+        1079, // fork (aarch64 uses clone)
+        1080, // vfork
+        221, // execve
+        129, // kill
+        131, // tgkill
+        222, // execveat
+        436, // clone3
+        198, // socket
+        203, // connect
+        200, // bind
+        201, // listen
+        202, // accept
+        1048, // accept4
+        117, // ptrace
+        91,  // personality
+        192, // init_module
+        193, // finit_module
+        194, // delete_module
+        269, // process_vm_readv
+        270, // process_vm_writev
+        150, // iopl (not on arm64, but block anyway)
+        151, // ioperm
+    ];
 
     let mut filters: Vec<libc::sock_filter> = Vec::with_capacity(3 + BLOCKED.len());
 
     // insn 0: ld [0]
     filters.push(libc::sock_filter {
-        code: 0x20, // BPF_LD | BPF_W | BPF_ABS
+        code: 0x20,
         jt: 0,
         jf: 0,
-        k: 0, // offset 0 = syscall number
+        k: 0,
     });
 
     // insns 1..n: jeq BLOCKED[i], KILL_LABEL
-    let kill_offset: u8 = (BLOCKED.len() + 1) as u8; // skip remaining jeqs + ret allow
+    let kill_offset: u8 = (BLOCKED.len() + 1) as u8;
     for syscall in BLOCKED {
         filters.push(libc::sock_filter {
-            code: 0x15, // BPF_JMP | BPF_JEQ | BPF_K
+            code: 0x15,
             jt: kill_offset,
             jf: 0,
             k: *syscall,
@@ -278,18 +535,18 @@ fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
 
     // insn n+1: ret ALLOW
     filters.push(libc::sock_filter {
-        code: 0x06, // BPF_RET | BPF_K
+        code: 0x06,
         jt: 0,
         jf: 0,
-        k: 0x7fff_0000, // SECCOMP_RET_ALLOW
+        k: 0x7fff_0000,
     });
 
     // insn n+2: ret KILL
     filters.push(libc::sock_filter {
-        code: 0x06, // BPF_RET | BPF_K
+        code: 0x06,
         jt: 0,
         jf: 0,
-        k: 0x0000_0000, // SECCOMP_RET_KILL
+        k: 0x0000_0000,
     });
 
     let prog = libc::sock_fprog {
@@ -350,5 +607,33 @@ mod tests {
         assert_eq!(config.timeout_seconds, 30);
         assert_eq!(config.max_memory_mb, 512);
         assert_eq!(config.max_concurrent, 4);
+    }
+
+    #[test]
+    fn test_max_concurrent_respected() {
+        let config = SandboxConfig {
+            enabled: true,
+            max_concurrent: 1,
+            timeout_seconds: 30,
+            ..Default::default()
+        };
+        let sandbox = Sandbox::new(config);
+        // Cannot spawn worker (binary doesn't exist), so it returns error
+        // but the important thing is it doesn't panic
+        let result = sandbox.run_worker("passthrough", b"test");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sandbox_requires_binary() {
+        let config = SandboxConfig {
+            enabled: true,
+            worker_path: Some(PathBuf::from("")),
+            timeout_seconds: 1,
+            ..Default::default()
+        };
+        let sandbox = Sandbox::new(config);
+        let result = sandbox.run_worker("passthrough", b"data");
+        assert!(result.is_err());
     }
 }

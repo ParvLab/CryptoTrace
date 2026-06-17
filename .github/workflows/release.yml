@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          ARCHIVE_DIR="cryptotrace-${{ github.ref_name }}-${{ matrix.target }}"
+          mkdir -p "$ARCHIVE_DIR"
+          cp "target/${{ matrix.target }}/release/cryptotrace" "$ARCHIVE_DIR/"
+          cp "target/${{ matrix.target }}/release/cryptotrace-worker" "$ARCHIVE_DIR/"
+          cp -r signatures "$ARCHIVE_DIR/"
+          cp -r calibration_data "$ARCHIVE_DIR/"
+          cp docs/CONFIGURATION.md "$ARCHIVE_DIR/"
+          cp CHANGELOG.md "$ARCHIVE_DIR/"
+          tar czf "$ARCHIVE_DIR.tar.gz" "$ARCHIVE_DIR"
+
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $archiveDir = "cryptotrace-$env:GITHUB_REF_NAME-${{ matrix.target }}"
+          New-Item -ItemType Directory -Path $archiveDir -Force
+          Copy-Item "target/${{ matrix.target }}/release/cryptotrace.exe" "$archiveDir/"
+          Copy-Item "target/${{ matrix.target }}/release/cryptotrace-worker.exe" "$archiveDir/"
+          Copy-Item -Recurse signatures "$archiveDir/"
+          Copy-Item -Recurse calibration_data "$archiveDir/"
+          Copy-Item docs/CONFIGURATION.md "$archiveDir/"
+          Copy-Item CHANGELOG.md "$archiveDir/"
+          Compress-Archive -Path $archiveDir -DestinationPath "$archiveDir.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cryptotrace-${{ github.ref_name }}-${{ matrix.target }}
+          path: cryptotrace-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          for f in */*.tar.gz */*.zip; do
+            sha256sum "$f" >> checksums.txt
+          done
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CryptoTrace ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

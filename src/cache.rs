@@ -59,6 +59,10 @@ impl<V> LruCache<V> {
     pub fn len(&self) -> usize {
         self.entries.len()
     }
+
+    pub fn capacity(&self) -> usize {
+        self.max_entries
+    }
 }
 
 #[cfg(test)]

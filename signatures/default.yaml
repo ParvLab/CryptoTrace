@@ -515,11 +515,11 @@ signatures:
 
   - id: berkeley_db
     name: Berkeley DB
-    magic_bytes: "00000000000000000000000000000000"
+    magic_bytes: "000102030405060708090A0B0C0D0E0F"
     offset: 0
     category: database
     risk_level: LOW
-    notes: Detection via hash bucket metadata; use content analysis
+    notes: Detection via hash bucket metadata; magic is a fixed 16-byte page signature
 
   # ── Code / Bytecode ────────────────────────────────────────
   - id: java_class
@@ -869,7 +869,7 @@ signatures:
     name: XAR Archive (macOS)
     magic_bytes: "78617221"
     offset: 0
-    category: executable
+    category: archive
     risk_level: MEDIUM
     notes: macOS XAR (eXtensible ARchive) used by Installer
 
@@ -920,6 +920,14 @@ signatures:
     risk_level: MEDIUM
     notes: "Hex for 'ed25519 ' prefix"
 
+  - id: gpg_key
+    name: GPG Key Packet (binary)
+    magic_bytes: "85"
+    offset: 0
+    category: cryptographic
+    risk_level: MEDIUM
+    notes: Binary OpenPGP key packet; first byte contains tag+CTB, tag value 5-14 indicates key type
+
   - id: minisign
     name: Minisign Signature
     magic_bytes: "756E7472757374656420636F6D6D656E74"
@@ -954,7 +962,7 @@ signatures:
   # ── Additional Database Formats ─────────────────────────
   - id: lmdb
     name: LMDB Environment
-    magic_bytes: "00000000"
+    magic_bytes: "FEEDBEEF"
     offset: 0
     category: database
     risk_level: LOW

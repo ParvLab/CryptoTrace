@@ -51,8 +51,8 @@ impl InputGuard {
 
         let has_null_bytes = bytes.contains(&0x00);
 
-        // Reject null bytes in string inputs
-        if source_type == SourceType::String && has_null_bytes {
+        // Reject null bytes in ALL inputs (string, file, binary)
+        if has_null_bytes {
             return Err(CryptoTraceError::NullBytesInString);
         }
 

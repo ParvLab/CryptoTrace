@@ -10,14 +10,12 @@ Out of the box, CryptoTrace makes **zero network calls**. All of the following a
 - Signature database updates (manual only)
 - VirusTotal threat intelligence
 - Community provider downloads
-- REST API (also disabled by default)
 
 ## Verification Checklist
 
 Use this checklist to confirm your deployment is truly air-gapped:
 
 - [ ] `cryptotrace.toml` does not contain `[ai] enabled = true`
-- [ ] `cryptotrace.toml` does not contain `[api] enabled = true`
 - [ ] No `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `VT_API_KEY` environment variables set
 - [ ] `cryptotrace analyze` on a test input completes within 1 second (no network timeout)
 - [ ] Running with `--ai` flag returns an error (not a timeout)

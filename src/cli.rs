@@ -82,7 +82,10 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum CacheAction {
+    /// Clear AI narrative cache
     Clear,
+    /// Show cache statistics
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -130,12 +133,16 @@ pub enum CalibrateAction {
     Status,
 }
 
-/// Run the CLI command and return a DetectionResult (if applicable).
-pub async fn run() -> Result<Option<DetectionResult>> {
+/// Run the CLI command and return a DetectionResult (if applicable) along with format flags.
+pub async fn run() -> Result<Option<(DetectionResult, bool, bool)>> {
     let cli = Cli::parse();
+    run_with_cli(&cli).await
+}
 
+/// Run the CLI command using a pre-parsed Cli struct.
+pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bool)>> {
     match &cli.command {
-        Commands::Analyze { input, context, deep, json: _, explain: _, ai, sandbox } => {
+        Commands::Analyze { input, context, deep, json, explain, ai, sandbox } => {
             let detection_context = match context.as_str() {
                 "malware" => crate::types::DetectionContext::Malware,
                 "password" => crate::types::DetectionContext::Password,
@@ -223,7 +230,7 @@ pub async fn run() -> Result<Option<DetectionResult>> {
                 }
             }
 
-            Ok(Some(result))
+            Ok(Some((result, *json, *explain)))
         }
 
         Commands::Update { rollback, from_file, verify } => {
@@ -264,6 +271,13 @@ pub async fn run() -> Result<Option<DetectionResult>> {
                     tracing::info!("AI narrative cache cleared");
                     println!("AI narrative cache cleared.");
                 }
+                CacheAction::Status => {
+                    let info = crate::intelligence::prompt::cache_info();
+                    println!("AI narrative cache:");
+                    println!("  Enabled:           {}", info.enabled);
+                    println!("  Capacity:          {} entries", info.capacity);
+                    println!("  Current entries:   {}", info.count);
+                }
             }
             Ok(None)
         }
@@ -271,11 +285,28 @@ pub async fn run() -> Result<Option<DetectionResult>> {
         Commands::Config { action } => {
             match action {
                 ConfigAction::Show => {
-                    println!("AI enabled:        false");
-                    println!("Sandbox enabled:   false");
-                    println!("API rate limit:    60/min");
-                    println!("Max file size:     50MB");
-                    println!("Max string size:   10MB");
+                    let config = crate::types::AppConfig::default();
+                    println!("AI enabled:            {}", config.ai.enabled);
+                    println!("AI provider:           {}", config.ai.provider.as_deref().unwrap_or("none"));
+                    println!("AI model:              {}", config.ai.model_family.as_deref().unwrap_or("gpt-4o"));
+                    println!("AI temperature:        {}", config.ai.temperature.as_ref().map_or(0.1, |t| *t));
+                    println!("AI max tokens:         {}", config.ai.max_tokens.as_ref().map_or(512, |t| *t));
+                    if let Some(ref cache) = config.ai.cache {
+                        println!("AI cache enabled:      {}", cache.enabled);
+                        println!("AI cache TTL days:     {}", cache.ttl_days);
+                        println!("AI cache max entries:  {}", cache.max_entries);
+                    }
+                    println!("Sandbox enabled:       {}", false);
+                    println!("Sandbox max memory:    512 MB");
+                    println!("Sandbox max concurrent: 4");
+                    println!("Sandbox timeout:       30s");
+                    println!("Entropy thresholds:    plaintext<={}, mixed<={}, compressed<={}",
+                        config.entropy.thresholds.plaintext_max,
+                        config.entropy.thresholds.mixed_max,
+                        config.entropy.thresholds.compressed_max);
+                    println!("Risk overrides:        {} rules", config.risk.overrides.len());
+                    println!("Max file size:         50 MB");
+                    println!("Max string size:       10 MB");
                 }
             }
             Ok(None)

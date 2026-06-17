@@ -32,9 +32,8 @@ Network features are opt-in.
 5. How It Works (Architecture)
 6. Feature Tour
 7. CLI Reference
-8. API Reference
-9. Output Schema
-10. Configuration Reference
+8. Output Schema
+9. Configuration Reference
 11. Security Model
 12. Threat Intel (Opt-In)
 13. SIEM Integration (CEF/LEEF)
@@ -100,52 +99,46 @@ CryptoTrace is designed for:
 
 ## Quick Start
 
-### Build
+### Install (one command, any OS)
 
+**Option 1 — With Rust installed:**
 ```bash
-git clone https://github.com/parv68/CryptoTrace
-cd CryptoTrace
-cargo build --release
+cargo install cryptotrace
 ```
 
-Binaries:
-- `target/release/cryptotrace`
-- `target/release/cryptotrace-worker`
+**Option 2 — macOS:**
+```bash
+brew install parv68/tap/cryptotrace
+```
+
+**Option 3 — Linux / macOS (no Rust):**
+```bash
+curl -sSfL https://github.com/parv68/CryptoTrace/releases/latest/download/install.sh | sh
+```
+
+**Option 4 — Windows (PowerShell, no Rust):**
+```powershell
+powershell -c "iwr https://github.com/parv68/CryptoTrace/releases/latest/download/install.ps1 | iex"
+```
 
 ### Verify
-
 ```bash
-target/release/cryptotrace version
+cryptotrace version
 ```
 
 ### Analyze A String
-
 ```bash
-target/release/cryptotrace analyze "5f4dcc3b5aa765d61d8327deb882cf99" --explain
+cryptotrace analyze "5f4dcc3b5aa765d61d8327deb882cf99" --explain
 ```
 
 ### Analyze A File
-
 ```bash
-target/release/cryptotrace analyze suspicious.bin --deep --sandbox
+cryptotrace analyze suspicious.bin --deep --sandbox
 ```
 
 ### JSON Output
-
 ```bash
-target/release/cryptotrace analyze suspicious.bin --json
-```
-
-### Start The API
-
-```bash
-target/release/cryptotrace --api
-```
-
-OpenAPI spec:
-
-```bash
-curl http://127.0.0.1:8080/docs
+cryptotrace analyze suspicious.bin --json
 ```
 
 ## How It Works (Architecture)
@@ -187,7 +180,6 @@ flowchart TD
   terminal
   JSON
   HTML
-  REST API
   CEF/LEEF]
 ```
 
@@ -264,18 +256,13 @@ CryptoTrace can optionally run YARA scans.
 These are opt-in.
 Air-gapped operation remains the default.
 
-### 8. API and Job Queue
-
-CryptoTrace can run as a service.
-It supports synchronous analysis and async jobs.
-
-### 9. Reports
+### 8. Reports
 
 CryptoTrace can emit:
 - JSON (machine-readable)
 - HTML (human-readable)
 
-### 10. SIEM Output
+### 9. SIEM Output
 
 CryptoTrace provides CEF and LEEF line formatters.
 They are designed for ingestion in SOC pipelines.
@@ -350,10 +337,11 @@ Notes:
 cryptotrace version
 ```
 
-### `cryptotrace cache clear`
+### `cryptotrace cache`
 
 ```bash
-cryptotrace cache clear
+cryptotrace cache clear    # Clear AI narrative cache
+cryptotrace cache status   # Show cache capacity and entry count
 ```
 
 ### `cryptotrace config show`
@@ -375,83 +363,6 @@ Examples:
 cryptotrace calibrate generate --samples 200 --output calibration_data/train.csv
 cryptotrace calibrate train --data calibration_data/train.csv
 cryptotrace calibrate status
-```
-
-## API Reference
-
-CryptoTrace exposes an HTTP API when started with `--api`.
-
-### Start
-
-```bash
-cryptotrace --api
-```
-
-Config sources:
-- env vars (`API_BIND`, `API_KEY`, `API_RATE_LIMIT`, `API_SANDBOX`)
-- `cryptotrace.toml` in current dir
-
-### Endpoints
-
-Public:
-- `GET /docs`
-- `GET /health`
-- `GET /version`
-
-Analysis:
-- `POST /analyze`
-- `POST /v1/jobs`
-- `GET /v1/jobs/:id`
-- `DELETE /v1/jobs/:id`
-
-### Example: Health
-
-```bash
-curl http://127.0.0.1:8080/health
-```
-
-### Example: Sync Analyze
-
-```bash
-curl -X POST http://127.0.0.1:8080/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input":"5f4dcc3b5aa765d61d8327deb882cf99",
-    "input_type":"string",
-    "context":"forensics",
-    "deep":false,
-    "ai":false,
-    "sandbox":false
-  }'
-```
-
-### Example: Async Job
-
-Submit:
-
-```bash
-curl -X POST http://127.0.0.1:8080/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input":"payload.bin",
-    "input_type":"file",
-    "context":"malware",
-    "deep":true,
-    "ai":false,
-    "sandbox":false
-  }'
-```
-
-Poll:
-
-```bash
-curl http://127.0.0.1:8080/v1/jobs/1
-```
-
-Cancel:
-
-```bash
-curl -X DELETE http://127.0.0.1:8080/v1/jobs/1
 ```
 
 ## Output Schema
@@ -502,12 +413,6 @@ Example JSON (abridged for readability):
 ## Configuration Reference
 
 CryptoTrace reads `cryptotrace.toml` from the current directory.
-
-The API server also reads env vars:
-- `API_BIND`
-- `API_KEY`
-- `API_RATE_LIMIT`
-- `API_SANDBOX`
 
 Defaults are intentionally conservative.
 AI remains disabled.
@@ -624,66 +529,25 @@ make fuzz-long
 bash scripts/fuzz-long.sh
 ```
 
-## Packaging and Distribution (v1 Plan)
+## Packaging and Distribution
 
-CryptoTrace is open-source and intended to be easy to install.
+CryptoTrace is distributed through:
 
-Packaging targets:
+| Method | Command |
+|--------|---------|
+| **crates.io** | `cargo install cryptotrace` |
+| **Homebrew** | `brew install parv68/tap/cryptotrace` |
+| **GitHub Releases** | Pre-built binaries for Linux, macOS, Windows |
 
-1. crates.io
-2. Homebrew
-3. Docker images
-4. GitHub Releases
-
-### crates.io (Planned)
-
-Once published:
+Install scripts:
 
 ```bash
-cargo install cryptotrace
+# Linux / macOS
+curl -sSfL https://github.com/parv68/CryptoTrace/releases/latest/download/install.sh | sh
+
+# Windows PowerShell
+powershell -c "iwr https://github.com/parv68/CryptoTrace/releases/latest/download/install.ps1 | iex"
 ```
-
-### Homebrew (Planned)
-
-Once published:
-
-```bash
-brew install cryptotrace
-```
-
-### Docker Image (Planned)
-
-We plan to publish a Docker image.
-We plan to publish it as multi-arch.
-
-Multi-arch means one tag supports:
-- `linux/amd64`
-- `linux/arm64`
-
-Example usage (once published):
-
-```bash
-docker run --rm -v "$PWD:/work" -w /work ghcr.io/parv68/cryptotrace:latest \
-  cryptotrace analyze suspicious.bin --json
-```
-
-Example build commands (maintainers):
-
-```bash
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t ghcr.io/parv68/cryptotrace:latest \
-  -t ghcr.io/parv68/cryptotrace:1.0.0 \
-  --push \
-  .
-```
-
-### GitHub Releases (Planned)
-
-We will attach binaries for:
-- Windows
-- macOS
-- Linux
 
 ## Development
 
@@ -704,24 +568,16 @@ cargo test
 If you use `--sandbox`, ensure `cryptotrace-worker` is on PATH.
 If building from source, build both binaries.
 
-### API bind
-
-Use `API_BIND` to configure the bind address.
-
 ### Windows fuzzing
 
 Long fuzz runs are recommended on Linux.
 
-## Project Status and Roadmap
+## Project Status
 
 Current status:
 - core engine implemented
-- API implemented
 - tests and safety guardrails implemented
-
-v1 focus areas:
-- packaging (crates.io, Homebrew, Docker)
-- long fuzz run gates
+- packaging (crates.io, Homebrew, GitHub Releases)
 - release automation
 
 ## Contributing

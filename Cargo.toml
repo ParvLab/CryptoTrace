@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2024"
 description = "Cryptographic Fingerprinting & Data Classification Engine"
 license = "Apache-2.0"
+homepage = "https://github.com/parv68/CryptoTrace"
+repository = "https://github.com/parv68/CryptoTrace"
+readme = "README.md"
+rust-version = "1.85"
+keywords = ["forensics", "cryptography", "detection", "security", "entropy", "encoding"]
+categories = ["command-line-utilities", "encoding", "cryptography", "compression"]
 
 [dependencies]
 # CLI
@@ -11,9 +17,6 @@ clap = { version = "4", features = ["derive"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
-
-# HTTP / API
-axum = "0.8"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

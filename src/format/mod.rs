@@ -41,6 +41,18 @@ pub fn infer_format_hierarchy(entry: &MagicEntry, data: &[u8]) -> FormatHierarch
         }
     }
 
+    // GPG key type inference
+    if entry.id == "gpg_key" {
+        if let Some(key_type) = detect_gpg_key_type(data) {
+            return FormatHierarchy::Nested {
+                category: entry.category.clone(),
+                format: entry.name.clone(),
+                subtype: Some(key_type),
+                detail: None,
+            };
+        }
+    }
+
     FormatHierarchy::Simple(entry.name.clone())
 }
 

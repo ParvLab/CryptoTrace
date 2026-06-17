@@ -25,6 +25,35 @@ pub fn clear_cache() {
     }
 }
 
+/// Cache statistics.
+pub struct CacheInfo {
+    pub enabled: bool,
+    pub capacity: usize,
+    pub count: usize,
+}
+
+/// Return current cache statistics.
+pub fn cache_info() -> CacheInfo {
+    NARRATIVE_CACHE.read().ok().map(|guard| {
+        match guard.as_ref() {
+            Some(cache) => CacheInfo {
+                enabled: true,
+                capacity: cache.capacity(),
+                count: cache.len(),
+            },
+            None => CacheInfo {
+                enabled: false,
+                capacity: 0,
+                count: 0,
+            },
+        }
+    }).unwrap_or(CacheInfo {
+        enabled: false,
+        capacity: 0,
+        count: 0,
+    })
+}
+
 /// Build a deterministic cache key from detection fields (no raw bytes).
 fn cache_key(result: &DetectionResult) -> String {
     use std::hash::{DefaultHasher, Hash, Hasher};

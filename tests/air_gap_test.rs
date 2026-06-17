@@ -64,9 +64,8 @@ fn test_all_network_features_opt_in() {
     let config = AppConfig::default();
     assert!(!config.ai.enabled, "AI disabled by default");
     assert!(config.ai.base_url.is_none(), "AI base URL should be None by default");
-    assert!(config.api.api_key.is_none(), "API key should be None by default");
     eprintln!(
-        "AIR_GAP: default config — AI={}, base_url={:?}, api_key={:?}",
-        config.ai.enabled, config.ai.base_url, config.api.api_key
+        "AIR_GAP: default config — AI={}, base_url={:?}",
+        config.ai.enabled, config.ai.base_url
     );
 }

@@ -32,8 +32,8 @@ fn bench_analyze_large_data(c: &mut Criterion) {
 
 fn bench_analyze_high_entropy(c: &mut Criterion) {
     use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let data: Vec<u8> = (0..65536).map(|_| rng.gen()).collect();
+    let mut rng = rand::rng();
+    let data: Vec<u8> = (0..65536).map(|_| rng.random()).collect();
     c.bench_function("analyze_64kb_random", |b| {
         b.iter(|| analyze_bytes(black_box(&data), SourceType::Binary))
     });
