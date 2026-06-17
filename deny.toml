@@ -1,8 +1,5 @@
 # CryptoTrace — cargo-deny configuration
 [advisories]
-vulnerability = "deny"
-unmaintained = "all"
-notice = "warn"
 yanked = "warn"
 ignore = []
 
@@ -18,16 +15,12 @@ allow = [
     "CC0-1.0",
     "OpenSSL",
 ]
-deny = []
-unlicensed = "deny"
 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-deny = []
 skip = []
 skip-tree = [
-    # ring pulls in older crates via its vendored dependencies
     { name = "ring", version = "*" },
 ]
 
