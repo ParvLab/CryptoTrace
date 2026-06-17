@@ -2,7 +2,7 @@ param(
     [string]$Version = "latest"
 )
 
-$Repo = "parv68/CryptoTrace"
+$Repo = "ParvLab/CryptoTrace"
 
 Write-Host "→ CryptoTrace Installer (Windows)"
 Write-Host "  Repo: $Repo"

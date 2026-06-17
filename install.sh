@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="parv68/CryptoTrace"
+REPO="ParvLab/CryptoTrace"
 VERSION="${1:-latest}"
 
 if [ "$VERSION" = "latest" ]; then
