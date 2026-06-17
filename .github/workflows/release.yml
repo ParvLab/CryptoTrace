@@ -13,6 +13,7 @@ jobs:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
@@ -50,7 +51,6 @@ jobs:
           cp -r signatures "$ARCHIVE_DIR/"
           cp -r calibration_data "$ARCHIVE_DIR/"
           cp docs/CONFIGURATION.md "$ARCHIVE_DIR/"
-          cp CHANGELOG.md "$ARCHIVE_DIR/"
           tar czf "$ARCHIVE_DIR.tar.gz" "$ARCHIVE_DIR"
 
       - name: Package (Windows)
@@ -64,7 +64,6 @@ jobs:
           Copy-Item -Recurse signatures "$archiveDir/"
           Copy-Item -Recurse calibration_data "$archiveDir/"
           Copy-Item docs/CONFIGURATION.md "$archiveDir/"
-          Copy-Item CHANGELOG.md "$archiveDir/"
           Compress-Archive -Path $archiveDir -DestinationPath "$archiveDir.zip"
 
       - name: Upload artifact
