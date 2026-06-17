@@ -1,3 +1,5 @@
+// Build worker binary first: cargo build --bin cryptotrace-worker
+
 use std::time::Instant;
 
 fn main() {

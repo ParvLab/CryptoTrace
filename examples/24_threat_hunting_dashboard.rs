@@ -1,5 +1,8 @@
 use std::fs;
+use std::path::Path;
 use std::time::Instant;
+
+const SKIP_DIRS: &[&str] = &["target", ".git", "node_modules"];
 
 #[derive(Debug)]
 struct ThreatEntry {
@@ -17,7 +20,7 @@ fn main() {
     let start = Instant::now();
 
     let args: Vec<String> = std::env::args().collect();
-    let scan_dir = args.get(1).map(|s| s.as_str()).unwrap_or(".");
+    let scan_dir = args.get(1).map(|s| s.as_str()).unwrap_or("src");
     let max_size: u64 = std::env::var("MAX_FILE_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(1_048_576);
 
     let mut threats: Vec<ThreatEntry> = Vec::new();
@@ -51,6 +54,12 @@ fn main() {
     println!("  Files with CVEs: {}", threats.iter().filter(|t| !t.cves.is_empty()).count());
 }
 
+fn should_skip(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| SKIP_DIRS.contains(&name) || name.starts_with('.'))
+}
+
 fn scan_directory(dir: &str, max_size: u64, threats: &mut Vec<ThreatEntry>) {
     let iter = match fs::read_dir(dir) {
         Ok(it) => it,
@@ -60,7 +69,7 @@ fn scan_directory(dir: &str, max_size: u64, threats: &mut Vec<ThreatEntry>) {
     for entry in iter.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            if !path.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')) {
+            if !should_skip(&path) {
                 scan_directory(&path.to_string_lossy(), max_size, threats);
             }
             continue;

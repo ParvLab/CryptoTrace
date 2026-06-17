@@ -1,4 +1,4 @@
-
+// Build worker binary first: cargo build --bin cryptotrace-worker
 
 fn main() {
     let config = cryptotrace::sanitization::sandbox::SandboxConfig {
