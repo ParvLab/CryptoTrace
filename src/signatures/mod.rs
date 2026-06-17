@@ -51,7 +51,10 @@ fn decode_magic(hex: &str) -> Option<Vec<u8>> {
 
 /// Match raw bytes against the signature registry.
 /// Returns all matching entries (by magic bytes at specified offset).
-pub fn match_signatures<'a>(data: &'a [u8], registry: &'a SignatureRegistry) -> Vec<&'a MagicEntry> {
+pub fn match_signatures<'a>(
+    data: &'a [u8],
+    registry: &'a SignatureRegistry,
+) -> Vec<&'a MagicEntry> {
     registry
         .signatures
         .iter()
@@ -202,11 +205,17 @@ mod tests {
 
     #[test]
     fn test_category_risk_mapping() {
-        assert_eq!(category_risk_level("executable"), crate::types::RiskLevel::High);
+        assert_eq!(
+            category_risk_level("executable"),
+            crate::types::RiskLevel::High
+        );
         assert_eq!(
             category_risk_level("cryptographic"),
             crate::types::RiskLevel::Critical
         );
-        assert_eq!(category_risk_level("compression"), crate::types::RiskLevel::Low);
+        assert_eq!(
+            category_risk_level("compression"),
+            crate::types::RiskLevel::Low
+        );
     }
 }

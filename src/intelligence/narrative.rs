@@ -38,12 +38,14 @@ pub fn validate_narrative(response: &str) -> Result<AiNarrative> {
     let risk_reason = extract_field(obj, "risk_reason", "No risk reasoning provided.", |s| {
         validate_risk_reason(s)
     });
-    let recommended_action = extract_field(obj, "recommended_action", "No action recommended.", |s| {
-        validate_action(s)
-    });
-    let confidence_statement = extract_field(obj, "confidence_statement", "Confidence not stated.", |s| {
-        validate_confidence(s)
-    });
+    let recommended_action =
+        extract_field(obj, "recommended_action", "No action recommended.", |s| {
+            validate_action(s)
+        });
+    let confidence_statement =
+        extract_field(obj, "confidence_statement", "Confidence not stated.", |s| {
+            validate_confidence(s)
+        });
 
     Ok(AiNarrative {
         summary,
@@ -77,15 +79,19 @@ fn extract_field(
 fn contains_hallucination(text: &str) -> bool {
     // Check for hallucinated CVE numbers
     for word in text.split_whitespace() {
-        let word = word.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':');
+        let word = word.trim_end_matches(|c: char| {
+            c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':'
+        });
         if word.starts_with(CVE_PREFIX) && word.len() > 4 {
             // CVE-YYYY-NNNNN format check
             let rest = &word[4..];
             if let Some(dash) = rest.find('-') {
                 let year = &rest[..dash];
                 let num = &rest[dash + 1..];
-                if year.len() == 4 && year.chars().all(|c| c.is_ascii_digit())
-                    && num.len() >= 4 && num.chars().all(|c| c.is_ascii_digit())
+                if year.len() == 4
+                    && year.chars().all(|c| c.is_ascii_digit())
+                    && num.len() >= 4
+                    && num.chars().all(|c| c.is_ascii_digit())
                 {
                     return false; // Valid CVE format — not hallucinated
                 }
@@ -99,7 +105,10 @@ fn contains_hallucination(text: &str) -> bool {
 
 /// Validate summary: max 2 sentences, no hallucinated algorithms not in known list.
 fn validate_summary(s: &str) -> Option<String> {
-    let sentence_count = s.matches(|c: char| c == '.' || c == '!' || c == '?').count().max(1);
+    let sentence_count = s
+        .matches(|c: char| c == '.' || c == '!' || c == '?')
+        .count()
+        .max(1);
     if sentence_count > 3 {
         return None; // Allow up to 3 sentences
     }
@@ -110,8 +119,18 @@ fn validate_summary(s: &str) -> Option<String> {
 fn validate_risk_reason(s: &str) -> Option<String> {
     let lower = s.to_lowercase();
     let has_signal = [
-        "entropy", "signal", "hash", "encoding", "compression", "encrypt",
-        "magic byte", "base64", "md5", "sha", "risk", "confidence",
+        "entropy",
+        "signal",
+        "hash",
+        "encoding",
+        "compression",
+        "encrypt",
+        "magic byte",
+        "base64",
+        "md5",
+        "sha",
+        "risk",
+        "confidence",
     ]
     .iter()
     .any(|kw| lower.contains(kw));
@@ -292,6 +311,9 @@ mod tests {
         // The summary has 1 sentence (one period at end) so it passes
         // We only reject if sentence count > 3
         let result = validate_narrative(json).unwrap();
-        assert_eq!(result.summary, "This is a very long summary that has way too many words and should probably be rejected because it exceeds the maximum allowed length for this field.");
+        assert_eq!(
+            result.summary,
+            "This is a very long summary that has way too many words and should probably be rejected because it exceeds the maximum allowed length for this field."
+        );
     }
 }

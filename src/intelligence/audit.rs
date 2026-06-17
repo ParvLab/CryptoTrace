@@ -15,7 +15,9 @@ fn audit_dir() -> PathBuf {
             } else {
                 std::env::var("XDG_DATA_HOME")
                     .map(PathBuf::from)
-                    .or_else(|_| std::env::var("HOME").map(|h| PathBuf::from(h).join(".local").join("share")))
+                    .or_else(|_| {
+                        std::env::var("HOME").map(|h| PathBuf::from(h).join(".local").join("share"))
+                    })
                     .unwrap_or_else(|_| PathBuf::from("."))
             };
             base.join("cryptotrace").join("audit")

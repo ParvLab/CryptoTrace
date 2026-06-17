@@ -35,7 +35,11 @@ impl InputGuard {
         self
     }
 
-    pub fn sanitize_bytes(&self, bytes: Vec<u8>, source_type: SourceType) -> Result<SanitizedInput> {
+    pub fn sanitize_bytes(
+        &self,
+        bytes: Vec<u8>,
+        source_type: SourceType,
+    ) -> Result<SanitizedInput> {
         let original_length = bytes.len();
         let max_size = match source_type {
             SourceType::String => self.max_string_size,
@@ -110,7 +114,10 @@ mod tests {
         let guard = InputGuard::new();
         let result = guard.sanitize_string("hello\0world");
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), CryptoTraceError::NullBytesInString));
+        assert!(matches!(
+            result.unwrap_err(),
+            CryptoTraceError::NullBytesInString
+        ));
     }
 
     #[test]

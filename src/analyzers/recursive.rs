@@ -54,11 +54,16 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
         let encoding_detection = crate::core::encoding::detect_encoding(&input_str);
         let compression_detection = crate::core::compression::detect_compression(&current_data);
         let (entropy, _) = crate::core::entropy::shannon_entropy(&current_data);
-        let encryption_detection = crate::core::encryption::detect_encryption(&current_data, entropy);
+        let encryption_detection =
+            crate::core::encryption::detect_encryption(&current_data, entropy);
 
         // Determine if we should try to unwrap
         let (detected_type, algorithm, confidence) = if let Some(e) = encoding_detection.as_ref() {
-            ("encoding".to_string(), e.encoding_type.clone(), e.confidence)
+            (
+                "encoding".to_string(),
+                e.encoding_type.clone(),
+                e.confidence,
+            )
         } else if let Some(c) = compression_detection.as_ref() {
             ("compression".to_string(), c.format.clone(), c.confidence)
         } else if let Some(e) = encryption_detection.as_ref() {
@@ -115,7 +120,9 @@ pub fn analyze_recursive(data: &[u8], config: &RecursiveConfig) -> Result<Vec<La
             }
         });
 
-        let preview = decoded.as_ref().map(|d| d.iter().take(64).cloned().collect());
+        let preview = decoded
+            .as_ref()
+            .map(|d| d.iter().take(64).cloned().collect());
 
         let layer = Layer {
             depth,

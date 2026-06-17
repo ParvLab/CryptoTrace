@@ -1,7 +1,7 @@
 use crate::types::{OffsetRange, SlidingEntropy};
 
 const DEFAULT_WINDOW_SIZE: usize = 4096; // 4KB
-const DEFAULT_STRIDE: usize = 2048;      // 2KB overlap
+const DEFAULT_STRIDE: usize = 2048; // 2KB overlap
 const DEFAULT_ENTROPY_THRESHOLD: f64 = 7.0;
 
 /// Compute sliding-window entropy over byte data.
@@ -113,7 +113,10 @@ mod tests {
         data.extend_from_slice(&b"A".repeat(4096));
 
         let result = sliding_window_entropy(&data, Some(4096), Some(2048), Some(6.5));
-        assert!(!result.embedded_regions.is_empty(), "Should detect high-entropy region");
+        assert!(
+            !result.embedded_regions.is_empty(),
+            "Should detect high-entropy region"
+        );
     }
 
     #[test]

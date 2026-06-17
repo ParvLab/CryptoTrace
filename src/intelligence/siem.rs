@@ -11,7 +11,6 @@
 /// - `SIEM_SYSLOG_ADDR` — host:port (e.g. `192.168.1.100:514`)
 /// - `SIEM_SYSLOG_PROTO` — `udp` (default) or `tcp`
 /// - `SIEM_SYSLOG_FORMAT` — `cef` (default) or `leef`
-
 use crate::types::DetectionResult;
 
 /// Format a `DetectionResult` as a CEF log line.
@@ -31,14 +30,20 @@ pub fn format_cef(result: &DetectionResult) -> String {
 
     let mut ext = String::new();
     ext.push_str(&format!("inputHash={} ", result.input_hash));
-    ext.push_str(&format!("detectedType={} ", escape_cef(&result.detected_type)));
+    ext.push_str(&format!(
+        "detectedType={} ",
+        escape_cef(&result.detected_type)
+    ));
     if let Some(ref algo) = result.algorithm {
         ext.push_str(&format!("algorithm={} ", escape_cef(algo)));
     }
     ext.push_str(&format!("confidence={:.2} ", result.confidence));
     ext.push_str(&format!("riskLevel={} ", result.risk_level));
     ext.push_str(&format!("entropy={:.2} ", result.entropy));
-    ext.push_str(&format!("falsePositiveRisk={:.4} ", result.false_positive_risk));
+    ext.push_str(&format!(
+        "falsePositiveRisk={:.4} ",
+        result.false_positive_risk
+    ));
     if let Some(ref weakness) = result.weakness {
         ext.push_str(&format!("weakness={} ", escape_cef(weakness)));
     }
@@ -47,9 +52,21 @@ pub fn format_cef(result: &DetectionResult) -> String {
     }
     ext.push_str(&format!("context={:?} ", result.detection_context));
     ext.push_str(&format!("calibrated={} ", result.calibrated));
-    ext.push_str(&format!("primaryDrivers={} ", result.primary_drivers.join(",")));
+    ext.push_str(&format!(
+        "primaryDrivers={} ",
+        result.primary_drivers.join(",")
+    ));
 
-    format!("CEF:0|{}|{}|{}|{}|{}|{}|{}", vendor, product, version, event_id, name, severity, ext.trim())
+    format!(
+        "CEF:0|{}|{}|{}|{}|{}|{}|{}",
+        vendor,
+        product,
+        version,
+        event_id,
+        name,
+        severity,
+        ext.trim()
+    )
 }
 
 /// Format a `DetectionResult` as a LEEF log line.
@@ -60,7 +77,10 @@ pub fn format_leef(result: &DetectionResult) -> String {
     let event_id = "100";
 
     let mut ext = String::new();
-    ext.push_str(&format!("cat={} ", escape_leef_value(&result.detected_type)));
+    ext.push_str(&format!(
+        "cat={} ",
+        escape_leef_value(&result.detected_type)
+    ));
     ext.push_str(&format!("sev={} ", leef_severity(result.risk_level)));
     ext.push_str(&format!("inputHash={} ", &result.input_hash));
     if let Some(ref algo) = result.algorithm {
@@ -72,9 +92,19 @@ pub fn format_leef(result: &DetectionResult) -> String {
     ext.push_str(&format!("fpr={:.4} ", result.false_positive_risk));
     ext.push_str(&format!("context={:?} ", result.detection_context));
     ext.push_str(&format!("calibrated={} ", result.calibrated));
-    ext.push_str(&format!("primaryDrivers={} ", result.primary_drivers.join(",")));
+    ext.push_str(&format!(
+        "primaryDrivers={} ",
+        result.primary_drivers.join(",")
+    ));
 
-    format!("LEEF:2.0|{}|{}|{}|{}|{}", vendor, product, version, event_id, ext.trim())
+    format!(
+        "LEEF:2.0|{}|{}|{}|{}|{}",
+        vendor,
+        product,
+        version,
+        event_id,
+        ext.trim()
+    )
 }
 
 /// CEF severity: 0-10 scale, 10=most severe.
@@ -165,7 +195,10 @@ pub async fn send_to_syslog(result: &DetectionResult) -> Result<(), String> {
 }
 
 /// Send a DetectionResult to a syslog server with explicit configuration.
-pub async fn send_to_syslog_with_config(result: &DetectionResult, config: &SyslogConfig) -> Result<(), String> {
+pub async fn send_to_syslog_with_config(
+    result: &DetectionResult,
+    config: &SyslogConfig,
+) -> Result<(), String> {
     let message = match config.format {
         SyslogFormat::Cef => format_cef(result),
         SyslogFormat::Leef => format_leef(result),
@@ -234,10 +267,22 @@ mod tests {
         let result = sample_result();
         let cef = format_cef(&result);
         assert!(cef.starts_with("CEF:0|"), "starts with CEF: {}", cef);
-        assert!(cef.contains("inputHash=abc123"), "contains inputHash: {}", cef);
+        assert!(
+            cef.contains("inputHash=abc123"),
+            "contains inputHash: {}",
+            cef
+        );
         assert!(cef.contains("algorithm=MD5"), "contains algorithm: {}", cef);
-        assert!(cef.contains("riskLevel=critical"), "contains riskLevel: {}", cef);
-        assert!(cef.contains("confidence=0.98"), "contains confidence: {}", cef);
+        assert!(
+            cef.contains("riskLevel=critical"),
+            "contains riskLevel: {}",
+            cef
+        );
+        assert!(
+            cef.contains("confidence=0.98"),
+            "contains confidence: {}",
+            cef
+        );
     }
 
     #[test]
@@ -245,10 +290,26 @@ mod tests {
         let result = sample_result();
         let leef = format_leef(&result);
         assert!(leef.starts_with("LEEF:2.0|"), "starts with LEEF: {}", leef);
-        assert!(leef.contains("inputHash=abc123"), "contains inputHash: {}", leef);
-        assert!(leef.contains("algorithm=MD5"), "contains algorithm: {}", leef);
-        assert!(leef.contains("riskLevel=critical"), "contains riskLevel: {}", leef);
-        assert!(leef.contains("confidence=0.98"), "contains confidence: {}", leef);
+        assert!(
+            leef.contains("inputHash=abc123"),
+            "contains inputHash: {}",
+            leef
+        );
+        assert!(
+            leef.contains("algorithm=MD5"),
+            "contains algorithm: {}",
+            leef
+        );
+        assert!(
+            leef.contains("riskLevel=critical"),
+            "contains riskLevel: {}",
+            leef
+        );
+        assert!(
+            leef.contains("confidence=0.98"),
+            "contains confidence: {}",
+            leef
+        );
         assert!(leef.contains("sev=10"), "contains sev: {}", leef);
     }
 
@@ -256,12 +317,32 @@ mod tests {
     fn test_cef_escape_special_chars() {
         let s = "a=b|c\\d\ne";
         let escaped = escape_cef(s);
-        assert!(escaped.contains("\\="), "should have escaped =: {}", escaped);
-        assert!(escaped.contains("\\|"), "should have escaped |: {}", escaped);
-        assert!(escaped.contains("\\\\"), "should have escaped \\: {}", escaped);
-        assert!(escaped.contains("\\n"), "should have escaped newline: {}", escaped);
+        assert!(
+            escaped.contains("\\="),
+            "should have escaped =: {}",
+            escaped
+        );
+        assert!(
+            escaped.contains("\\|"),
+            "should have escaped |: {}",
+            escaped
+        );
+        assert!(
+            escaped.contains("\\\\"),
+            "should have escaped \\: {}",
+            escaped
+        );
+        assert!(
+            escaped.contains("\\n"),
+            "should have escaped newline: {}",
+            escaped
+        );
         // The original = and | and \ should still be present (as part of escape sequences)
-        assert!(escaped.contains('='), "= should still appear as \\=: {}", escaped);
+        assert!(
+            escaped.contains('='),
+            "= should still appear as \\=: {}",
+            escaped
+        );
     }
 
     #[test]

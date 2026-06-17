@@ -8,7 +8,6 @@
 ///   1. Enables sandbox with a path to a nonexistent worker binary
 ///   2. Calls `run_worker` which should fail gracefully
 ///   3. Confirms the error is a `CryptoTraceError`, not a panic
-
 use cryptotrace::sanitization::sandbox::{Sandbox, SandboxConfig};
 use std::path::PathBuf;
 

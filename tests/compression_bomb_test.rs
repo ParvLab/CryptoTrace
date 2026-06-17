@@ -3,8 +3,7 @@
 /// A compression bomb is an input that decompresses to more than 100× the
 /// original size (the default MAX_EXPANSION_RATIO). The analyzer should
 /// return `CryptoTraceError::CompressionBomb` before exhausting memory.
-
-use cryptotrace::analyzers::recursive::{analyze_recursive, RecursiveConfig};
+use cryptotrace::analyzers::recursive::{RecursiveConfig, analyze_recursive};
 use cryptotrace::error::CryptoTraceError;
 
 /// Build a small payload that compresses very efficiently (many repeated
@@ -26,7 +25,7 @@ fn test_compression_bomb_rejected() {
 
     // Use a tight config to ensure we detect the bomb quickly.
     let config = RecursiveConfig {
-        max_depth: 2,           // only one decompression layer needed
+        max_depth: 2, // only one decompression layer needed
         max_time_secs: 10,
         max_expansion_ratio: 100.0,
     };
@@ -35,13 +34,11 @@ fn test_compression_bomb_rejected() {
 
     match result {
         Err(CryptoTraceError::CompressionBomb { ratio, limit }) => {
-            assert!(
-                ratio > limit,
-                "expected ratio {} > limit {}",
-                ratio,
-                limit
+            assert!(ratio > limit, "expected ratio {} > limit {}", ratio, limit);
+            eprintln!(
+                "COMPRESSION_BOMB: ratio={:.1}x limit={:.0}x — correctly rejected",
+                ratio, limit
             );
-            eprintln!("COMPRESSION_BOMB: ratio={:.1}x limit={:.0}x — correctly rejected", ratio, limit);
         }
         Err(other) => {
             // Might get RecursionTimeout on slow machines; still a safe failure.
@@ -75,7 +72,11 @@ fn test_normal_compression_passes() {
 
     let config = RecursiveConfig::default();
     let result = analyze_recursive(&compressed, &config);
-    assert!(result.is_ok(), "normal compression should decode: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "normal compression should decode: {:?}",
+        result.err()
+    );
     let layers = result.unwrap();
     assert!(!layers.is_empty(), "should have at least one layer");
 }

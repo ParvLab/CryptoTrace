@@ -42,10 +42,13 @@ impl<V> LruCache<V> {
                 self.entries.remove(&evict_key);
             }
         }
-        self.entries.insert(key, CacheEntry {
-            value,
-            last_access: Instant::now(),
-        });
+        self.entries.insert(
+            key,
+            CacheEntry {
+                value,
+                last_access: Instant::now(),
+            },
+        );
     }
 
     pub fn contains(&self, key: &str) -> bool {

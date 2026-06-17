@@ -60,7 +60,12 @@ pub fn infer_format_hierarchy(entry: &MagicEntry, data: &[u8]) -> FormatHierarch
 pub fn format_tree_string(hierarchy: &FormatHierarchy) -> String {
     match hierarchy {
         FormatHierarchy::Simple(name) => name.clone(),
-        FormatHierarchy::Nested { category, format, subtype, detail } => {
+        FormatHierarchy::Nested {
+            category,
+            format,
+            subtype,
+            detail,
+        } => {
             let mut parts = vec![category.clone(), format.clone()];
             if let Some(sub) = subtype {
                 parts.push(sub.clone());
@@ -92,12 +97,7 @@ pub fn detect_pe_subsystem(data: &[u8]) -> Option<String> {
         return None;
     }
     // Read e_lfanew at offset 0x3C (4 bytes, little-endian)
-    let e_lfanew = u32::from_le_bytes([
-        data[0x3C],
-        data[0x3D],
-        data[0x3E],
-        data[0x3F],
-    ]) as usize;
+    let e_lfanew = u32::from_le_bytes([data[0x3C], data[0x3D], data[0x3E], data[0x3F]]) as usize;
 
     if e_lfanew + 0x5C + 2 > data.len() {
         return None;
@@ -127,10 +127,7 @@ pub fn detect_pe_subsystem(data: &[u8]) -> Option<String> {
     if subsystem_offset + 2 > data.len() {
         return None;
     }
-    let subsystem = u16::from_le_bytes([
-        data[subsystem_offset],
-        data[subsystem_offset + 1],
-    ]);
+    let subsystem = u16::from_le_bytes([data[subsystem_offset], data[subsystem_offset + 1]]);
 
     Some(match subsystem {
         1 => "Native (Driver)".to_string(),
@@ -175,13 +172,11 @@ mod tests {
             category: "compression".to_string(),
             risk_level: "LOW".to_string(),
             notes: None,
-            subtypes: vec![
-                crate::signatures::SubtypeEntry {
-                    id: "zip_docx".to_string(),
-                    name: "Office Open XML Document (DOCX)".to_string(),
-                    detect: "[Content_Types].xml".to_string(),
-                },
-            ],
+            subtypes: vec![crate::signatures::SubtypeEntry {
+                id: "zip_docx".to_string(),
+                name: "Office Open XML Document (DOCX)".to_string(),
+                detect: "[Content_Types].xml".to_string(),
+            }],
             provenance: None,
         }
     }
@@ -208,17 +203,20 @@ mod tests {
     fn test_pe_subsystem_gui() {
         // Minimal DOS header + PE signature + optional header indicating GUI
         let mut data = vec![0u8; 0x100];
-        data[0] = b'M'; data[1] = b'Z';
+        data[0] = b'M';
+        data[1] = b'Z';
         data[0x3C] = 0x40; // e_lfanew = 0x40
 
         // PE signature at 0x40
         data[0x40..0x44].copy_from_slice(&[0x50, 0x45, 0x00, 0x00]);
 
         // PE optional header magic at 0x40 + 0x18 = 0x58
-        data[0x58] = 0x0B; data[0x59] = 0x01; // PE32 magic (0x010B)
+        data[0x58] = 0x0B;
+        data[0x59] = 0x01; // PE32 magic (0x010B)
 
         // Subsystem at offset 0x40 + 0x18 + 0x44 = 0x9C
-        data[0x9C] = 2; data[0x9D] = 0; // GUI subsystem
+        data[0x9C] = 2;
+        data[0x9D] = 0; // GUI subsystem
 
         let result = detect_pe_subsystem(&data);
         assert_eq!(result, Some("GUI Application".to_string()));

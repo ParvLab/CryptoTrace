@@ -62,8 +62,9 @@ impl UpdateManager {
         }
 
         if let Some(parent) = self.registry_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| CryptoTraceError::Other(format!("Cannot create registry dir: {}", e)))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                CryptoTraceError::Other(format!("Cannot create registry dir: {}", e))
+            })?;
         }
 
         let content = std::fs::read_to_string(new_registry_path)
@@ -92,7 +93,11 @@ impl UpdateManager {
     /// Apply an update with GPG/Ed25519 signature verification.
     /// `signature_path` should be a detached Ed25519 signature file (raw 64-byte)
     /// or a GPG detached signature (`.sig`/`.asc`).
-    pub fn apply_verified_update(&self, new_registry_path: &Path, signature_path: &Path) -> Result<()> {
+    pub fn apply_verified_update(
+        &self,
+        new_registry_path: &Path,
+        signature_path: &Path,
+    ) -> Result<()> {
         let public_key = self.load_public_key()?;
         let verified = self.verify_detached(new_registry_path, signature_path, &public_key)?;
         if !verified {
@@ -109,7 +114,12 @@ impl UpdateManager {
 
     /// Verify a detached Ed25519 signature on a file using the ring crate.
     /// `signature_path` must contain the raw 64-byte Ed25519 signature.
-    pub fn verify_detached(&self, data_path: &Path, signature_path: &Path, public_key: &[u8]) -> Result<bool> {
+    pub fn verify_detached(
+        &self,
+        data_path: &Path,
+        signature_path: &Path,
+        public_key: &[u8],
+    ) -> Result<bool> {
         // First, try ring-based Ed25519 verification
         if let Ok(result) = self.verify_ed25519(data_path, signature_path, public_key) {
             return Ok(result);
@@ -119,7 +129,12 @@ impl UpdateManager {
         self.verify_gpg(data_path, signature_path)
     }
 
-    fn verify_ed25519(&self, data_path: &Path, signature_path: &Path, public_key: &[u8]) -> Result<bool> {
+    fn verify_ed25519(
+        &self,
+        data_path: &Path,
+        signature_path: &Path,
+        public_key: &[u8],
+    ) -> Result<bool> {
         use ring::signature;
 
         let data = std::fs::read(data_path)
@@ -161,7 +176,10 @@ impl UpdateManager {
                         "GPG not found on system and Ed25519 verification failed".to_string(),
                     ));
                 }
-                Err(CryptoTraceError::Other(format!("GPG execution error: {}", e)))
+                Err(CryptoTraceError::Other(format!(
+                    "GPG execution error: {}",
+                    e
+                )))
             }
         }
     }
@@ -172,8 +190,13 @@ impl UpdateManager {
             CryptoTraceError::Other("No public key configured for verification".to_string())
         })?;
 
-        let data = std::fs::read(path)
-            .map_err(|e| CryptoTraceError::Other(format!("Cannot read public key '{}': {}", path.display(), e)))?;
+        let data = std::fs::read(path).map_err(|e| {
+            CryptoTraceError::Other(format!(
+                "Cannot read public key '{}': {}",
+                path.display(),
+                e
+            ))
+        })?;
 
         Ok(data)
     }
@@ -388,13 +411,17 @@ signatures: []
 
         // Verify using the public key
         let public_key = key_pair.public_key();
-        let result = mgr.verify_detached(&data_path, &sig_path, public_key.as_ref()).unwrap();
+        let result = mgr
+            .verify_detached(&data_path, &sig_path, public_key.as_ref())
+            .unwrap();
         assert!(result);
 
         // Tampered data should fail
         let tampered_path = dir.path().join("tampered.yaml");
         std::fs::write(&tampered_path, b"tampered data").unwrap();
-        let result2 = mgr.verify_detached(&tampered_path, &sig_path, public_key.as_ref()).unwrap();
+        let result2 = mgr
+            .verify_detached(&tampered_path, &sig_path, public_key.as_ref())
+            .unwrap();
         assert!(!result2);
     }
 

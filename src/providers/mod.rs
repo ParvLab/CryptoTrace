@@ -63,10 +63,9 @@ pub struct OpenAiProvider {
 
 impl OpenAiProvider {
     pub fn new(config: &AiProviderConfig) -> Result<Self> {
-        let api_key = config
-            .api_key
-            .clone()
-            .ok_or_else(|| CryptoTraceError::AiProvider("OpenAI requires an API key".to_string()))?;
+        let api_key = config.api_key.clone().ok_or_else(|| {
+            CryptoTraceError::AiProvider("OpenAI requires an API key".to_string())
+        })?;
         Ok(Self {
             api_key,
             model: config.model.clone(),
@@ -114,7 +113,9 @@ impl AiProvider for OpenAiProvider {
 
         let content = json["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or_else(|| CryptoTraceError::AiProvider("OpenAI returned empty response".to_string()))?;
+            .ok_or_else(|| {
+                CryptoTraceError::AiProvider("OpenAI returned empty response".to_string())
+            })?;
 
         crate::intelligence::narrative::validate_narrative(content)
     }
@@ -170,16 +171,17 @@ impl AiProvider for AnthropicProvider {
             .json(&body)
             .send()
             .await
-            .map_err(|e| CryptoTraceError::AiProvider(format!("Anthropic request failed: {}", e)))?;
+            .map_err(|e| {
+                CryptoTraceError::AiProvider(format!("Anthropic request failed: {}", e))
+            })?;
 
-        let json: serde_json::Value = resp
-            .json()
-            .await
-            .map_err(|e| CryptoTraceError::AiProvider(format!("Anthropic response parse: {}", e)))?;
+        let json: serde_json::Value = resp.json().await.map_err(|e| {
+            CryptoTraceError::AiProvider(format!("Anthropic response parse: {}", e))
+        })?;
 
-        let content = json["content"][0]["text"]
-            .as_str()
-            .ok_or_else(|| CryptoTraceError::AiProvider("Anthropic returned empty response".to_string()))?;
+        let content = json["content"][0]["text"].as_str().ok_or_else(|| {
+            CryptoTraceError::AiProvider("Anthropic returned empty response".to_string())
+        })?;
 
         crate::intelligence::narrative::validate_narrative(content)
     }
@@ -249,9 +251,9 @@ impl AiProvider for LocalProvider {
             .await
             .map_err(|e| CryptoTraceError::AiProvider(format!("Local response parse: {}", e)))?;
 
-        let content = json["response"]
-            .as_str()
-            .ok_or_else(|| CryptoTraceError::AiProvider("Local model returned empty response".to_string()))?;
+        let content = json["response"].as_str().ok_or_else(|| {
+            CryptoTraceError::AiProvider("Local model returned empty response".to_string())
+        })?;
 
         crate::intelligence::narrative::validate_narrative(content)
     }

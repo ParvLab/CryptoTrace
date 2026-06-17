@@ -1,3 +1,3 @@
 pub mod file;
-pub mod string;
 pub mod recursive;
+pub mod string;

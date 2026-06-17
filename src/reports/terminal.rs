@@ -12,7 +12,10 @@ pub fn format_terminal_ext(result: &DetectionResult, explain: bool) -> String {
     output.push_str(" CryptoTrace Analysis Report\n");
     output.push_str("═══════════════════════════════════════\n\n");
 
-    output.push_str(&format!(" Input:      {}\n", &result.input_hash[..32.min(result.input_hash.len())]));
+    output.push_str(&format!(
+        " Input:      {}\n",
+        &result.input_hash[..32.min(result.input_hash.len())]
+    ));
     output.push_str(&format!(" Entropy:    {:.2} / 8.00", result.entropy));
 
     // Add sliding window info if available
@@ -27,7 +30,10 @@ pub fn format_terminal_ext(result: &DetectionResult, explain: bool) -> String {
     output.push_str(&format!(" Source:     {:?}\n", result.source_type));
 
     output.push('\n');
-    output.push_str(&format!(" Detection:  {}\n", result.algorithm.as_deref().unwrap_or("Unknown")));
+    output.push_str(&format!(
+        " Detection:  {}\n",
+        result.algorithm.as_deref().unwrap_or("Unknown")
+    ));
     output.push_str(&format!(" Type:       {}\n", result.detected_type));
     output.push_str(&format!(" Confidence: {:.0}%", result.confidence * 100.0));
     if result.calibrated {
@@ -49,9 +55,18 @@ pub fn format_terminal_ext(result: &DetectionResult, explain: bool) -> String {
         if let Some(bd) = signals.byte_distribution {
             output.push_str(&format!("   byte_distribution  {:.2}\n", bd));
         }
-        output.push_str(&format!("   block_alignment    {:.2}\n", signals.block_alignment));
-        output.push_str(&format!("   magic_bytes        {:.2}\n", signals.magic_bytes));
-        output.push_str(&format!("   length_pattern     {:.2}\n", signals.length_pattern));
+        output.push_str(&format!(
+            "   block_alignment    {:.2}\n",
+            signals.block_alignment
+        ));
+        output.push_str(&format!(
+            "   magic_bytes        {:.2}\n",
+            signals.magic_bytes
+        ));
+        output.push_str(&format!(
+            "   length_pattern     {:.2}\n",
+            signals.length_pattern
+        ));
         if let Some(cp) = signals.charset_purity {
             output.push_str(&format!("   charset_purity     {:.2}\n", cp));
         }
@@ -75,7 +90,10 @@ pub fn format_terminal_ext(result: &DetectionResult, explain: bool) -> String {
             }
         }
         if result.false_positive_risk > 0.0 {
-            output.push_str(&format!("\n False Positive Risk: {:.1}%\n", result.false_positive_risk * 100.0));
+            output.push_str(&format!(
+                "\n False Positive Risk: {:.1}%\n",
+                result.false_positive_risk * 100.0
+            ));
         }
         if !result.weakness_cve.is_empty() {
             output.push_str("\n Related CVEs:\n");
@@ -131,7 +149,10 @@ fn format_layer_tree(output: &mut String, layer: &crate::types::Layer, indent: u
     let prefix = "  ".repeat(indent);
     output.push_str(&format!(
         "{}├─ [{}] {} ({:.0}% confidence)\n",
-        prefix, layer.depth, layer.algorithm, layer.confidence * 100.0
+        prefix,
+        layer.depth,
+        layer.algorithm,
+        layer.confidence * 100.0
     ));
     if let Some(ratio) = layer.expansion_ratio {
         output.push_str(&format!("{}│  expansion: {:.1}:1\n", prefix, ratio));

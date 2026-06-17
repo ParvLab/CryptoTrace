@@ -83,7 +83,12 @@ fn logistic(x: f64) -> f64 {
 
 /// Train a calibration model using gradient descent on a labeled dataset.
 /// Uses binary cross-entropy loss with L2 regularization.
-pub fn train(dataset: &[CalibrationSample], learning_rate: f64, epochs: usize, l2_lambda: f64) -> CalibrationModel {
+pub fn train(
+    dataset: &[CalibrationSample],
+    learning_rate: f64,
+    epochs: usize,
+    l2_lambda: f64,
+) -> CalibrationModel {
     let n_features = 6;
     let n = dataset.len() as f64;
 
@@ -134,9 +139,10 @@ pub fn save_model(model: &CalibrationModel, path: &str) -> Result<(), CryptoTrac
 
 /// Load a calibration model from a JSON file.
 pub fn load_model(path: &str) -> Result<CalibrationModel, CryptoTraceError> {
-    let content =
-        std::fs::read_to_string(path).map_err(|e| CryptoTraceError::Other(format!("Cannot read model: {}", e)))?;
-    serde_json::from_str(&content).map_err(|e| CryptoTraceError::Other(format!("Cannot parse model: {}", e)))
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| CryptoTraceError::Other(format!("Cannot read model: {}", e)))?;
+    serde_json::from_str(&content)
+        .map_err(|e| CryptoTraceError::Other(format!("Cannot parse model: {}", e)))
 }
 
 /// Load the default bundled model (if available), or None.
@@ -273,8 +279,8 @@ fn chrono_now() -> String {
 
 /// Load calibration samples from a CSV file.
 pub fn load_csv(path: &str) -> Result<Vec<CalibrationSample>, CryptoTraceError> {
-    let mut reader =
-        csv::Reader::from_path(path).map_err(|e| CryptoTraceError::Other(format!("Cannot open CSV: {}", e)))?;
+    let mut reader = csv::Reader::from_path(path)
+        .map_err(|e| CryptoTraceError::Other(format!("Cannot open CSV: {}", e)))?;
 
     let mut samples = Vec::new();
     for result in reader.deserialize() {
@@ -290,7 +296,8 @@ pub fn load_csv(path: &str) -> Result<Vec<CalibrationSample>, CryptoTraceError> 
             detected_type: String,
         }
 
-        let row: Row = result.map_err(|e| CryptoTraceError::Other(format!("CSV parse error: {}", e)))?;
+        let row: Row =
+            result.map_err(|e| CryptoTraceError::Other(format!("CSV parse error: {}", e)))?;
         samples.push(CalibrationSample {
             signals: SignalBreakdown {
                 entropy: row.entropy,

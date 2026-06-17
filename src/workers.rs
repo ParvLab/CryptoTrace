@@ -12,7 +12,12 @@ impl WorkerPool {
     }
 
     /// Run a parsing operation in an isolated subprocess.
-    pub fn run_isolated(&self, operation: &str, input: &[u8], timeout: Duration) -> Result<Vec<u8>> {
+    pub fn run_isolated(
+        &self,
+        operation: &str,
+        input: &[u8],
+        timeout: Duration,
+    ) -> Result<Vec<u8>> {
         let mut config = SandboxConfig::default();
         config.enabled = true;
         config.timeout_seconds = timeout.as_secs().max(1);

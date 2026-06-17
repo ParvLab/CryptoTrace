@@ -11,8 +11,7 @@
 ///
 /// Note: exact heap measurement is platform-specific, so we rely on
 /// successful completion as a proxy.
-
-use cryptotrace::analyzers::recursive::{analyze_recursive, RecursiveConfig};
+use cryptotrace::analyzers::recursive::{RecursiveConfig, analyze_recursive};
 use cryptotrace::error::Result;
 
 /// Build a chain of `depth` nested base64 layers around a tiny core.
@@ -21,10 +20,7 @@ use cryptotrace::error::Result;
 fn build_base64_chain(core: &[u8], depth: usize) -> Vec<u8> {
     let mut current = core.to_vec();
     for _ in 0..depth {
-        let encoded = base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            &current,
-        );
+        let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &current);
         current = encoded.into_bytes();
     }
     current
@@ -38,12 +34,7 @@ fn test_10_layer_chain_stays_bounded() -> Result<()> {
     // To reach ~10 MB at layer 5: core ≈ 10 MB / 4.21 ≈ 2.4 MB.
     let core = b"This is a test payload with some entropy to look like real data. ";
     let core_len = 2_400_000;
-    let core_repeated: Vec<u8> = core
-        .iter()
-        .copied()
-        .cycle()
-        .take(core_len)
-        .collect();
+    let core_repeated: Vec<u8> = core.iter().copied().cycle().take(core_len).collect();
 
     // Build 5 layers of nested base64 — outermost should be ~ 10 MB.
     let outer = build_base64_chain(&core_repeated, 5);

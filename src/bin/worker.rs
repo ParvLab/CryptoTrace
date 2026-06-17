@@ -35,7 +35,10 @@ fn main() {
         "decompress" => run_decompress(&input),
         "passthrough" => Ok(input),
         _ => {
-            emit_error("unknown_operation", &format!("Unknown operation: {}", operation));
+            emit_error(
+                "unknown_operation",
+                &format!("Unknown operation: {}", operation),
+            );
             std::process::exit(1);
         }
     };
@@ -54,11 +57,9 @@ fn main() {
 
 /// Run the full detection pipeline and output JSON.
 fn run_detect(input: &[u8]) -> Result<Vec<u8>, String> {
-    let result = cryptotrace::analyzers::file::analyze_bytes(
-        input,
-        cryptotrace::types::SourceType::Binary,
-    )
-    .map_err(|e| format!("Detection failed: {}", e))?;
+    let result =
+        cryptotrace::analyzers::file::analyze_bytes(input, cryptotrace::types::SourceType::Binary)
+            .map_err(|e| format!("Detection failed: {}", e))?;
 
     serde_json::to_vec(&result).map_err(|e| format!("JSON serialization: {}", e))
 }
@@ -89,5 +90,9 @@ fn emit_error(code: &str, message: &str) {
         "error": code,
         "message": message,
     });
-    let _ = writeln!(io::stderr(), "{}", serde_json::to_string(&err).unwrap_or_default());
+    let _ = writeln!(
+        io::stderr(),
+        "{}",
+        serde_json::to_string(&err).unwrap_or_default()
+    );
 }

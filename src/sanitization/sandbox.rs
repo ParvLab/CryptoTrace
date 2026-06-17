@@ -132,7 +132,10 @@ impl Sandbox {
             .stderr(Stdio::piped());
 
         // Set memory limit env var for pre_exec closures
-        cmd.env("CRYPTOTRACE_MAX_MEMORY_MB", self.config.max_memory_mb.to_string());
+        cmd.env(
+            "CRYPTOTRACE_MAX_MEMORY_MB",
+            self.config.max_memory_mb.to_string(),
+        );
 
         // Platform-specific sandbox enforcement (pre-spawn)
         apply_platform_sandbox(&mut cmd, self.config.max_memory_mb);
@@ -272,15 +275,29 @@ fn apply_platform_sandbox(cmd: &mut Command, _max_memory_mb: u64) {
             );
             let profile_bytes = profile.as_bytes();
             let mut error: *mut libc::c_char = std::ptr::null_mut();
-            let ret = libc::sandbox_init(
-                profile_bytes.as_ptr() as *const libc::c_char,
-                0,
-                &mut error,
-            );
+            extern "C" {
+                fn sandbox_init(
+                    profile: *const libc::c_char,
+                    flags: u64,
+                    errorbuf: *mut *mut libc::c_char,
+                ) -> libc::c_int;
+                fn sandbox_free_error(errorbuf: *mut libc::c_char);
+            }
+            let ret = unsafe {
+                sandbox_init(
+                    profile_bytes.as_ptr() as *const libc::c_char,
+                    0u64,
+                    &mut error,
+                )
+            };
             if ret != 0 {
                 if !error.is_null() {
-                    let msg = std::ffi::CStr::from_ptr(error).to_string_lossy().into_owned();
-                    libc::sandbox_free_error(error);
+                    let msg = std::ffi::CStr::from_ptr(error)
+                        .to_string_lossy()
+                        .into_owned();
+                    unsafe {
+                        sandbox_free_error(error);
+                    }
                     Err(std::io::Error::new(std::io::ErrorKind::Other, msg))
                 } else {
                     Err(std::io::Error::last_os_error())
@@ -352,20 +369,14 @@ fn apply_post_spawn_sandbox(
     }
 
     unsafe extern "system" {
-        fn CreateJobObjectW(
-            lpJobAttributes: *const c_void,
-            lpName: LPCWSTR,
-        ) -> HANDLE;
+        fn CreateJobObjectW(lpJobAttributes: *const c_void, lpName: LPCWSTR) -> HANDLE;
         fn SetInformationJobObject(
             hJob: HANDLE,
             job_object_info_class: DWORD,
             lp_job_object_info: LPVOID,
             cb_job_object_info_length: DWORD,
         ) -> BOOL;
-        fn AssignProcessToJobObject(
-            hJob: HANDLE,
-            hProcess: HANDLE,
-        ) -> BOOL;
+        fn AssignProcessToJobObject(hJob: HANDLE, hProcess: HANDLE) -> BOOL;
         fn OpenProcess(
             dw_desired_access: DWORD,
             b_inherit_handle: BOOL,
@@ -456,7 +467,7 @@ fn apply_post_spawn_sandbox(
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
+fn install_seccomp_blacklist() -> std::result::Result<(), std::io::Error> {
     // Syscall numbers vary by architecture
     #[cfg(target_arch = "x86_64")]
     const BLOCKED: &[u32] = &[
@@ -487,29 +498,29 @@ fn install_seccomp_blacklist() -> Result<(), std::io::Error> {
 
     #[cfg(target_arch = "aarch64")]
     const BLOCKED: &[u32] = &[
-        220, // clone
+        220,  // clone
         1079, // fork (aarch64 uses clone)
         1080, // vfork
-        221, // execve
-        129, // kill
-        131, // tgkill
-        222, // execveat
-        436, // clone3
-        198, // socket
-        203, // connect
-        200, // bind
-        201, // listen
-        202, // accept
+        221,  // execve
+        129,  // kill
+        131,  // tgkill
+        222,  // execveat
+        436,  // clone3
+        198,  // socket
+        203,  // connect
+        200,  // bind
+        201,  // listen
+        202,  // accept
         1048, // accept4
-        117, // ptrace
-        91,  // personality
-        192, // init_module
-        193, // finit_module
-        194, // delete_module
-        269, // process_vm_readv
-        270, // process_vm_writev
-        150, // iopl (not on arm64, but block anyway)
-        151, // ioperm
+        117,  // ptrace
+        91,   // personality
+        192,  // init_module
+        193,  // finit_module
+        194,  // delete_module
+        269,  // process_vm_readv
+        270,  // process_vm_writev
+        150,  // iopl (not on arm64, but block anyway)
+        151,  // ioperm
     ];
 
     let mut filters: Vec<libc::sock_filter> = Vec::with_capacity(3 + BLOCKED.len());

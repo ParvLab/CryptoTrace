@@ -1,6 +1,6 @@
-use clap::{Parser, Subcommand};
 use crate::error::Result;
 use crate::types::DetectionResult;
+use clap::{Parser, Subcommand};
 
 /// Cryptographic Fingerprinting & Data Classification Engine
 #[derive(Parser)]
@@ -142,7 +142,15 @@ pub async fn run() -> Result<Option<(DetectionResult, bool, bool)>> {
 /// Run the CLI command using a pre-parsed Cli struct.
 pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bool)>> {
     match &cli.command {
-        Commands::Analyze { input, context, deep, json, explain, ai, sandbox } => {
+        Commands::Analyze {
+            input,
+            context,
+            deep,
+            json,
+            explain,
+            ai,
+            sandbox,
+        } => {
             let detection_context = match context.as_str() {
                 "malware" => crate::types::DetectionContext::Malware,
                 "password" => crate::types::DetectionContext::Password,
@@ -181,7 +189,10 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
             // Recursive analysis
             if *deep && !result.algorithm.as_deref().map_or(true, |a| a.is_empty()) {
                 let config = crate::analyzers::recursive::RecursiveConfig::default();
-                let layers = crate::analyzers::recursive::analyze_recursive(&result.input_hash.as_bytes(), &config)?;
+                let layers = crate::analyzers::recursive::analyze_recursive(
+                    &result.input_hash.as_bytes(),
+                    &config,
+                )?;
                 // Convert recursive layers to DetectionResult layers
                 for layer in layers {
                     let layer_result = DetectionResult {
@@ -226,21 +237,28 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                         Err(e) => eprintln!("AI narrative: {}", e),
                     }
                 } else {
-                    eprintln!("AI narrative requested but no AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or configure a local provider.");
+                    eprintln!(
+                        "AI narrative requested but no AI provider configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or configure a local provider."
+                    );
                 }
             }
 
             Ok(Some((result, *json, *explain)))
         }
 
-        Commands::Update { rollback, from_file, verify } => {
-            let update_mgr = crate::update::UpdateManager::new(
-                std::path::Path::new("signatures"),
-            );
+        Commands::Update {
+            rollback,
+            from_file,
+            verify,
+        } => {
+            let update_mgr = crate::update::UpdateManager::new(std::path::Path::new("signatures"));
 
             if *rollback {
                 update_mgr.rollback()?;
-                println!("Rolled back to signature DB: {}", update_mgr.current_version());
+                println!(
+                    "Rolled back to signature DB: {}",
+                    update_mgr.current_version()
+                );
             } else if let Some(path) = from_file {
                 let import_path = std::path::Path::new(path);
                 let sig_path = verify.as_ref().map(|s| std::path::Path::new(s));
@@ -255,9 +273,7 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
         }
 
         Commands::Version => {
-            let update_mgr = crate::update::UpdateManager::new(
-                std::path::Path::new("signatures"),
-            );
+            let update_mgr = crate::update::UpdateManager::new(std::path::Path::new("signatures"));
             println!("CryptoTrace v{}", env!("CARGO_PKG_VERSION"));
             println!("Engine: {}", env!("CARGO_PKG_VERSION"));
             println!("Signature DB: {}", update_mgr.current_version());
@@ -287,10 +303,22 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                 ConfigAction::Show => {
                     let config = crate::types::AppConfig::default();
                     println!("AI enabled:            {}", config.ai.enabled);
-                    println!("AI provider:           {}", config.ai.provider.as_deref().unwrap_or("none"));
-                    println!("AI model:              {}", config.ai.model_family.as_deref().unwrap_or("gpt-4o"));
-                    println!("AI temperature:        {}", config.ai.temperature.as_ref().map_or(0.1, |t| *t));
-                    println!("AI max tokens:         {}", config.ai.max_tokens.as_ref().map_or(512, |t| *t));
+                    println!(
+                        "AI provider:           {}",
+                        config.ai.provider.as_deref().unwrap_or("none")
+                    );
+                    println!(
+                        "AI model:              {}",
+                        config.ai.model_family.as_deref().unwrap_or("gpt-4o")
+                    );
+                    println!(
+                        "AI temperature:        {}",
+                        config.ai.temperature.as_ref().map_or(0.1, |t| *t)
+                    );
+                    println!(
+                        "AI max tokens:         {}",
+                        config.ai.max_tokens.as_ref().map_or(512, |t| *t)
+                    );
                     if let Some(ref cache) = config.ai.cache {
                         println!("AI cache enabled:      {}", cache.enabled);
                         println!("AI cache TTL days:     {}", cache.ttl_days);
@@ -300,11 +328,16 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                     println!("Sandbox max memory:    512 MB");
                     println!("Sandbox max concurrent: 4");
                     println!("Sandbox timeout:       30s");
-                    println!("Entropy thresholds:    plaintext<={}, mixed<={}, compressed<={}",
+                    println!(
+                        "Entropy thresholds:    plaintext<={}, mixed<={}, compressed<={}",
                         config.entropy.thresholds.plaintext_max,
                         config.entropy.thresholds.mixed_max,
-                        config.entropy.thresholds.compressed_max);
-                    println!("Risk overrides:        {} rules", config.risk.overrides.len());
+                        config.entropy.thresholds.compressed_max
+                    );
+                    println!(
+                        "Risk overrides:        {} rules",
+                        config.risk.overrides.len()
+                    );
                     println!("Max file size:         50 MB");
                     println!("Max string size:       10 MB");
                 }
@@ -314,7 +347,13 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
 
         Commands::Calibrate { action } => {
             match action {
-                CalibrateAction::Train { data, output, learning_rate, epochs, l2_lambda } => {
+                CalibrateAction::Train {
+                    data,
+                    output,
+                    learning_rate,
+                    epochs,
+                    l2_lambda,
+                } => {
                     let samples = crate::core::calibration::load_csv(data)?;
                     if samples.is_empty() {
                         eprintln!("No samples loaded from {}", data);
@@ -327,7 +366,12 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                         epochs,
                         l2_lambda,
                     );
-                    let model = crate::core::calibration::train(&samples, *learning_rate, *epochs, *l2_lambda);
+                    let model = crate::core::calibration::train(
+                        &samples,
+                        *learning_rate,
+                        *epochs,
+                        *l2_lambda,
+                    );
                     crate::core::calibration::save_model(&model, output)?;
                     crate::core::confidence::set_model(model);
                     println!("Model saved to {}", output);
@@ -337,29 +381,40 @@ pub async fn run_with_cli(cli: &Cli) -> Result<Option<(DetectionResult, bool, bo
                 CalibrateAction::Generate { samples, output } => {
                     let data = crate::core::calibration::generate_synthetic_dataset(*samples);
                     // Write CSV
-                    let mut wtr = csv::Writer::from_path(output)
-                        .map_err(|e| crate::error::CryptoTraceError::Other(
-                            format!("Cannot create CSV: {}", e)
-                        ))?;
+                    let mut wtr = csv::Writer::from_path(output).map_err(|e| {
+                        crate::error::CryptoTraceError::Other(format!("Cannot create CSV: {}", e))
+                    })?;
                     wtr.write_record(&[
-                        "entropy", "block_alignment", "magic_bytes", "length_pattern",
-                        "charset_purity", "window_variance", "label", "detected_type",
-                    ]).ok();
+                        "entropy",
+                        "block_alignment",
+                        "magic_bytes",
+                        "length_pattern",
+                        "charset_purity",
+                        "window_variance",
+                        "label",
+                        "detected_type",
+                    ])
+                    .ok();
                     for sample in &data {
                         wtr.write_record(&[
                             format!("{:.6}", sample.signals.entropy),
                             format!("{:.6}", sample.signals.block_alignment),
                             format!("{:.6}", sample.signals.magic_bytes),
                             format!("{:.6}", sample.signals.length_pattern),
-                            sample.signals.charset_purity
+                            sample
+                                .signals
+                                .charset_purity
                                 .map(|v| format!("{:.6}", v))
                                 .unwrap_or_default(),
-                            sample.signals.window_variance
+                            sample
+                                .signals
+                                .window_variance
                                 .map(|v| format!("{:.6}", v))
                                 .unwrap_or_default(),
                             format!("{}", sample.label as u8),
                             sample.detected_type.clone(),
-                        ]).ok();
+                        ])
+                        .ok();
                     }
                     wtr.flush().ok();
                     println!("Generated {} synthetic samples → {}", data.len(), output);
@@ -398,7 +453,10 @@ pub fn print_result_ext(result: &DetectionResult, json: bool, explain: bool) {
     if json {
         println!("{}", crate::reports::json::format_json(result));
     } else {
-        print!("{}", crate::reports::terminal::format_terminal_ext(result, explain));
+        print!(
+            "{}",
+            crate::reports::terminal::format_terminal_ext(result, explain)
+        );
     }
 }
 
@@ -429,15 +487,20 @@ pub fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
         // Try to load from cryptotrace.toml
         let toml_path = std::path::Path::new("cryptotrace.toml");
         if toml_path.exists() {
-            let content = std::fs::read_to_string(toml_path)
-                .map_err(|e| crate::error::CryptoTraceError::Other(format!("Config read: {}", e)))?;
-            let parsed: serde_json::Value = toml::from_str(&content)
-                .map_err(|e| crate::error::CryptoTraceError::Other(format!("Config parse: {}", e)))?;
+            let content = std::fs::read_to_string(toml_path).map_err(|e| {
+                crate::error::CryptoTraceError::Other(format!("Config read: {}", e))
+            })?;
+            let parsed: serde_json::Value = toml::from_str(&content).map_err(|e| {
+                crate::error::CryptoTraceError::Other(format!("Config parse: {}", e))
+            })?;
             if let Some(ai) = parsed.get("ai") {
                 if let Some(provider) = ai.get("provider").and_then(|v| v.as_str()) {
                     config.provider_type = provider.to_string();
                 }
-                config.api_key = ai.get("api_key").and_then(|v| v.as_str()).map(|s| s.to_string());
+                config.api_key = ai
+                    .get("api_key")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
                 config.model = ai
                     .get("model")
                     .and_then(|v| v.as_str())
@@ -452,7 +515,10 @@ pub fn load_ai_provider() -> Result<Box<dyn crate::providers::AiProvider>> {
                     .and_then(|v| v.as_u64())
                     .map(|v| v as u32)
                     .unwrap_or(config.max_tokens);
-                config.base_url = ai.get("base_url").and_then(|v| v.as_str()).map(|s| s.to_string());
+                config.base_url = ai
+                    .get("base_url")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
                 config.timeout_seconds = ai
                     .get("timeout_seconds")
                     .and_then(|v| v.as_u64())

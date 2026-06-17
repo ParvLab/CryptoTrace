@@ -1,7 +1,7 @@
 use crate::error::Result;
 use crate::providers::AiProvider;
 use crate::sanitization::sandbox::Sandbox;
-use crate::signatures::{default_registry, match_signatures, MagicEntry};
+use crate::signatures::{MagicEntry, default_registry, match_signatures};
 use crate::types::DetectionResult;
 
 /// Analyze a file by reading its contents and running the full detection pipeline.
@@ -12,7 +12,10 @@ pub fn analyze_file(path: &std::path::Path) -> Result<DetectionResult> {
 }
 
 /// Analyze raw bytes through the detection pipeline.
-pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Result<DetectionResult> {
+pub fn analyze_bytes(
+    data: &[u8],
+    source_type: crate::types::SourceType,
+) -> Result<DetectionResult> {
     // Entropy analysis
     let (entropy, _freq) = crate::core::entropy::shannon_entropy(data);
     let sliding = crate::core::sliding_entropy::sliding_window_entropy(data, None, None, None);
@@ -50,7 +53,10 @@ pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Resu
     );
 
     // Overlay signature registry info (strongest signal)
-    if let Some(best) = matched_signatures.iter().max_by_key(|e| e.magic_bytes.len()) {
+    if let Some(best) = matched_signatures
+        .iter()
+        .max_by_key(|e| e.magic_bytes.len())
+    {
         if result.algorithm.is_none() && result.detected_type == "plaintext" {
             result.detected_type = best.category.clone();
             result.algorithm = Some(best.id.clone());
@@ -71,22 +77,26 @@ pub fn analyze_bytes(data: &[u8], source_type: crate::types::SourceType) -> Resu
 /// Run detection through the sandboxed worker subprocess.
 /// The worker performs the actual analysis; if it crashes, we fall back to
 /// in-process analysis and log a warning.
-pub fn analyze_file_sandboxed(path: &std::path::Path, sandbox: &Sandbox) -> Result<DetectionResult> {
+pub fn analyze_file_sandboxed(
+    path: &std::path::Path,
+    sandbox: &Sandbox,
+) -> Result<DetectionResult> {
     let guard = crate::sanitization::InputGuard::new();
     let sanitized = guard.sanitize_file(path)?;
 
     // Try sandboxed detection
     match sandbox.run_worker("detect", &sanitized.raw_bytes) {
-        Ok(output) => {
-            serde_json::from_slice(&output).map_err(|e| {
-                crate::error::CryptoTraceError::Other(format!(
-                    "Failed to parse worker output as DetectionResult: {}",
-                    e
-                ))
-            })
-        }
+        Ok(output) => serde_json::from_slice(&output).map_err(|e| {
+            crate::error::CryptoTraceError::Other(format!(
+                "Failed to parse worker output as DetectionResult: {}",
+                e
+            ))
+        }),
         Err(e) => {
-            tracing::warn!("Sandboxed detection failed, falling back to in-process: {}", e);
+            tracing::warn!(
+                "Sandboxed detection failed, falling back to in-process: {}",
+                e
+            );
             analyze_bytes(&sanitized.raw_bytes, crate::types::SourceType::File)
         }
     }
@@ -95,14 +105,9 @@ pub fn analyze_file_sandboxed(path: &std::path::Path, sandbox: &Sandbox) -> Resu
 /// Run byte analysis through the sandboxed worker subprocess.
 pub fn analyze_bytes_sandboxed(data: &[u8], sandbox: &Sandbox) -> Result<DetectionResult> {
     match sandbox.run_worker("detect", data) {
-        Ok(output) => {
-            serde_json::from_slice(&output).map_err(|e| {
-                crate::error::CryptoTraceError::Other(format!(
-                    "Failed to parse worker output: {}",
-                    e
-                ))
-            })
-        }
+        Ok(output) => serde_json::from_slice(&output).map_err(|e| {
+            crate::error::CryptoTraceError::Other(format!("Failed to parse worker output: {}", e))
+        }),
         Err(e) => {
             tracing::warn!("Sandboxed byte analysis failed, falling back: {}", e);
             analyze_bytes(data, crate::types::SourceType::Binary)
@@ -133,9 +138,11 @@ mod tests {
 
     #[test]
     fn test_analyze_bytes_md5() {
-        let result =
-            analyze_bytes(b"5f4dcc3b5aa765d61d8327deb882cf99", crate::types::SourceType::String)
-                .unwrap();
+        let result = analyze_bytes(
+            b"5f4dcc3b5aa765d61d8327deb882cf99",
+            crate::types::SourceType::String,
+        )
+        .unwrap();
         assert_eq!(result.detected_type, "hash");
         assert_eq!(result.algorithm.as_deref(), Some("MD5"));
     }

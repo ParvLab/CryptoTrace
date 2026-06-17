@@ -51,9 +51,9 @@ pub fn detect_encoding(input: &str) -> Option<EncodingDetection> {
 }
 
 fn detect_base64(input: &str) -> Option<EncodingDetection> {
-    let charset_ok = input.chars().all(|c| {
-        matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '+' | '/' | '=')
-    });
+    let charset_ok = input
+        .chars()
+        .all(|c| matches!(c, 'A'..='Z' | 'a'..='z' | '0'..='9' | '+' | '/' | '='));
     if !charset_ok {
         return None;
     }
@@ -86,18 +86,20 @@ fn detect_base64(input: &str) -> Option<EncodingDetection> {
         .decode(input)
         .is_ok();
 
-    let openssl_prefix = if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(input) {
-        decoded.starts_with(b"Salted__")
-    } else {
-        false
-    };
+    let openssl_prefix =
+        if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(input) {
+            decoded.starts_with(b"Salted__")
+        } else {
+            false
+        };
 
     let charset_score = if charset_ok { 1.0 } else { 0.0 };
     let padding_score = if padding_count <= 2 { 1.0 } else { 0.0 };
     let decode_score = if decode_ok { 1.0 } else { 0.0 };
     let openssl_score = if openssl_prefix { 1.0 } else { 0.0 };
 
-    let confidence: f64 = charset_score * 0.3 + padding_score * 0.2 + decode_score * 0.4 + openssl_score * 0.1;
+    let confidence: f64 =
+        charset_score * 0.3 + padding_score * 0.2 + decode_score * 0.4 + openssl_score * 0.1;
 
     if confidence < 0.5 {
         return None;
@@ -123,7 +125,10 @@ fn detect_hex(input: &str) -> Option<EncodingDetection> {
     if input.is_empty() || input.len() % 2 != 0 {
         return None;
     }
-    if !input.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F')) {
+    if !input
+        .chars()
+        .all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'))
+    {
         return None;
     }
 
@@ -149,9 +154,7 @@ fn detect_url_encoding(input: &str) -> Option<EncodingDetection> {
         .as_bytes()
         .windows(3)
         .filter(|w| w[0] == b'%')
-        .all(|w| {
-            w[1].is_ascii_hexdigit() && w[2].is_ascii_hexdigit()
-        });
+        .all(|w| w[1].is_ascii_hexdigit() && w[2].is_ascii_hexdigit());
 
     if !valid_pairs {
         return None;
@@ -168,7 +171,10 @@ fn detect_base32(input: &str) -> Option<EncodingDetection> {
     if input.len() % 8 != 0 {
         return None;
     }
-    if !input.chars().all(|c| matches!(c, 'A'..='Z' | '2'..='7' | '=')) {
+    if !input
+        .chars()
+        .all(|c| matches!(c, 'A'..='Z' | '2'..='7' | '='))
+    {
         return None;
     }
 
@@ -181,9 +187,7 @@ fn detect_base32(input: &str) -> Option<EncodingDetection> {
 
 fn detect_base58(input: &str) -> Option<EncodingDetection> {
     // Base58 alphabet (Bitcoin): no 0, O, I, l
-    let base58_chars = |c: char| {
-        matches!(c, '1'..='9' | 'A'..='H' | 'J'..='N' | 'P'..='Z' | 'a'..='k' | 'm'..='z')
-    };
+    let base58_chars = |c: char| matches!(c, '1'..='9' | 'A'..='H' | 'J'..='N' | 'P'..='Z' | 'a'..='k' | 'm'..='z');
     if input.len() < 4 || !input.chars().all(base58_chars) {
         return None;
     }
@@ -192,7 +196,10 @@ fn detect_base58(input: &str) -> Option<EncodingDetection> {
     let has_upper = input.chars().any(|c| c.is_ascii_uppercase());
     let has_lower = input.chars().any(|c| c.is_ascii_lowercase());
     let has_digit = input.chars().any(|c| c.is_ascii_digit());
-    let class_count = [has_upper, has_lower, has_digit].iter().filter(|&&x| x).count();
+    let class_count = [has_upper, has_lower, has_digit]
+        .iter()
+        .filter(|&&x| x)
+        .count();
     if class_count < 2 {
         return None;
     }
@@ -207,7 +214,32 @@ fn detect_base85(input: &str) -> Option<EncodingDetection> {
     // Z85 (ZeroMQ): [0-9a-zA-Z._:+-=^!/*?&<>()[]{}@%$#]
     let z85_chars = |c: char| {
         c.is_ascii_alphanumeric()
-            || matches!(c, '.' | '_' | ':' | '+' | '-' | '=' | '^' | '!' | '/' | '*' | '?' | '&' | '<' | '>' | '(' | ')' | '[' | ']' | '{' | '}' | '@' | '%' | '$' | '#')
+            || matches!(
+                c,
+                '.' | '_'
+                    | ':'
+                    | '+'
+                    | '-'
+                    | '='
+                    | '^'
+                    | '!'
+                    | '/'
+                    | '*'
+                    | '?'
+                    | '&'
+                    | '<'
+                    | '>'
+                    | '('
+                    | ')'
+                    | '['
+                    | ']'
+                    | '{'
+                    | '}'
+                    | '@'
+                    | '%'
+                    | '$'
+                    | '#'
+            )
     };
     // Ascii85 (Adobe): starts with ~<, ends with ~>
     if input.starts_with("~<") && input.ends_with("~>") && input.len() > 4 {
@@ -221,7 +253,32 @@ fn detect_base85(input: &str) -> Option<EncodingDetection> {
     // colliding with Base58/Base64 which also match pure alphanumeric strings).
     if input.len() >= 4 && input.chars().all(z85_chars) {
         let has_special = input.chars().any(|c| {
-            matches!(c, '.' | '_' | ':' | '+' | '-' | '=' | '^' | '!' | '/' | '*' | '?' | '&' | '<' | '>' | '(' | ')' | '[' | ']' | '{' | '}' | '@' | '%' | '$' | '#')
+            matches!(
+                c,
+                '.' | '_'
+                    | ':'
+                    | '+'
+                    | '-'
+                    | '='
+                    | '^'
+                    | '!'
+                    | '/'
+                    | '*'
+                    | '?'
+                    | '&'
+                    | '<'
+                    | '>'
+                    | '('
+                    | ')'
+                    | '['
+                    | ']'
+                    | '{'
+                    | '}'
+                    | '@'
+                    | '%'
+                    | '$'
+                    | '#'
+            )
         });
         if !has_special {
             return None;
@@ -279,8 +336,7 @@ mod tests {
 
     #[test]
     fn test_base64_openssl() {
-        let data = base64::engine::general_purpose::STANDARD
-            .encode(b"Salted__some_encrypted_data");
+        let data = base64::engine::general_purpose::STANDARD.encode(b"Salted__some_encrypted_data");
         let result = detect_encoding(&data).unwrap();
         assert_eq!(result.encoding_type, "Base64");
         assert!(result.confidence > 0.95);

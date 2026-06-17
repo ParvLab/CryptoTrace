@@ -28,7 +28,9 @@ pub fn detect_hash(input: &str) -> Option<HashDetection> {
 
 fn try_detect(s: &str) -> Option<HashDetection> {
     let len = s.len();
-    let is_hex = s.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'));
+    let is_hex = s
+        .chars()
+        .all(|c| matches!(c, '0'..='9' | 'a'..='f' | 'A'..='F'));
 
     if !is_hex && !is_prefix_based(s) {
         return None;
@@ -39,7 +41,8 @@ fn try_detect(s: &str) -> Option<HashDetection> {
         // with at least one uppercase letter to distinguish from pure-digit hashes)
         if len == 32
             && s.chars().any(|c| c.is_ascii_uppercase())
-            && s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+            && s.chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
         {
             return Some(HashDetection {
                 algorithm: "NTLM".to_string(),
@@ -62,7 +65,10 @@ fn try_detect(s: &str) -> Option<HashDetection> {
                 algorithm: "MD5".to_string(),
                 confidence: 0.95,
                 risk_level: RiskLevel::Critical,
-                weakness_flags: vec!["collision_vulnerable".to_string(), "rainbow_table_crackable".to_string()],
+                weakness_flags: vec![
+                    "collision_vulnerable".to_string(),
+                    "rainbow_table_crackable".to_string(),
+                ],
             });
         }
         if len == 40 {
@@ -130,7 +136,11 @@ fn detect_prefix_based(s: &str) -> Option<HashDetection> {
                 return Some(HashDetection {
                     algorithm: "bcrypt".to_string(),
                     confidence: 0.99,
-                    risk_level: if cost >= 12 { RiskLevel::Low } else { RiskLevel::Medium },
+                    risk_level: if cost >= 12 {
+                        RiskLevel::Low
+                    } else {
+                        RiskLevel::Medium
+                    },
                     weakness_flags: if cost < 12 {
                         vec!["insufficient_work_factor".to_string()]
                     } else {
@@ -167,13 +177,18 @@ fn detect_prefix_based(s: &str) -> Option<HashDetection> {
         let parts: Vec<&str> = s.split('$').collect();
         // Minimum: $pbkdf2-digest$iterations$salt$hash
         if parts.len() >= 4 {
-            let digest = parts.first().and_then(|_| parts.get(1).and_then(|p| {
-                // extract digest after "$pbkdf2-"
-                let rest = p.strip_prefix("pbkdf2-").unwrap_or("");
-                if rest.is_empty() { None } else { Some(rest) }
-            }));
+            let digest = parts.first().and_then(|_| {
+                parts.get(1).and_then(|p| {
+                    // extract digest after "$pbkdf2-"
+                    let rest = p.strip_prefix("pbkdf2-").unwrap_or("");
+                    if rest.is_empty() { None } else { Some(rest) }
+                })
+            });
             let algo = digest.unwrap_or("unknown");
-            let has_iterations = parts.get(2).map(|i| i.parse::<u64>().is_ok()).unwrap_or(false);
+            let has_iterations = parts
+                .get(2)
+                .map(|i| i.parse::<u64>().is_ok())
+                .unwrap_or(false);
 
             return Some(HashDetection {
                 algorithm: format!("PBKDF2-{}", algo.to_uppercase()),
@@ -219,7 +234,9 @@ mod tests {
 
     #[test]
     fn test_sha256() {
-        let result = detect_hash("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").unwrap();
+        let result =
+            detect_hash("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+                .unwrap();
         assert_eq!(result.algorithm, "SHA256");
     }
 

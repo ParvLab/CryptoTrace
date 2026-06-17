@@ -95,12 +95,14 @@ fn test_base91_accuracy() {
 
 #[test]
 fn test_negative_cases() {
-    let non_encodings = vec![
-        "spaces in text",
-        "foo\tbar",
-    ];
+    let non_encodings = vec!["spaces in text", "foo\tbar"];
     for input in non_encodings {
         let result = detect_encoding(input);
-        assert!(result.is_none(), "Should not detect '{}' as encoding. Got: {:?}", input, result.map(|r| r.encoding_type));
+        assert!(
+            result.is_none(),
+            "Should not detect '{}' as encoding. Got: {:?}",
+            input,
+            result.map(|r| r.encoding_type)
+        );
     }
 }

@@ -35,11 +35,17 @@ impl CommunityRegistry {
 
     /// Load a registry from a specific JSON file.
     pub fn from_file(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| CryptoTraceError::Other(format!("Cannot read community registry at '{}': {}", path.display(), e)))?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            CryptoTraceError::Other(format!(
+                "Cannot read community registry at '{}': {}",
+                path.display(),
+                e
+            ))
+        })?;
 
-        let registry: Self = serde_json::from_str(&content)
-            .map_err(|e| CryptoTraceError::Other(format!("Invalid community registry JSON: {}", e)))?;
+        let registry: Self = serde_json::from_str(&content).map_err(|e| {
+            CryptoTraceError::Other(format!("Invalid community registry JSON: {}", e))
+        })?;
 
         if registry.providers.is_empty() {
             return Err(CryptoTraceError::Other(
@@ -57,32 +63,44 @@ impl CommunityRegistry {
 
     /// Return providers filtered by trust level.
     pub fn by_trust_level(&self, level: &str) -> Vec<&CommunityProvider> {
-        self.providers.iter().filter(|p| p.trust_level == level).collect()
+        self.providers
+            .iter()
+            .filter(|p| p.trust_level == level)
+            .collect()
     }
 
     /// Return providers matching any of the given categories.
     pub fn by_categories(&self, categories: &[&str]) -> Vec<&CommunityProvider> {
         self.providers
             .iter()
-            .filter(|p| p.categories.iter().any(|c| categories.contains(&c.as_str())))
+            .filter(|p| {
+                p.categories
+                    .iter()
+                    .any(|c| categories.contains(&c.as_str()))
+            })
             .collect()
     }
 
     /// Ensure the local signature path for a provider exists.
     /// Returns the full path to the local signature file.
     pub fn resolve_local_path(&self, provider: &CommunityProvider) -> PathBuf {
-        Path::new("signatures").join("community").join(&provider.signature_path)
+        Path::new("signatures")
+            .join("community")
+            .join(&provider.signature_path)
     }
 }
 
 /// Load a community provider's signature file, downloading it if necessary.
 pub async fn load_community_signatures(provider: &CommunityProvider) -> Result<Vec<u8>> {
-    let local_path = Path::new("signatures").join("community").join(&provider.signature_path);
+    let local_path = Path::new("signatures")
+        .join("community")
+        .join(&provider.signature_path);
 
     // If the local file exists, load it
     if local_path.exists() {
-        return std::fs::read(&local_path)
-            .map_err(|e| CryptoTraceError::Other(format!("Cannot read local signature file: {}", e)));
+        return std::fs::read(&local_path).map_err(|e| {
+            CryptoTraceError::Other(format!("Cannot read local signature file: {}", e))
+        });
     }
 
     // Otherwise, download from the provider's URL
@@ -96,11 +114,9 @@ async fn download_provider_signatures(provider: &CommunityProvider) -> Result<Ve
         .build()
         .map_err(|e| CryptoTraceError::Other(format!("HTTP client error: {}", e)))?;
 
-    let resp = client
-        .get(&provider.url)
-        .send()
-        .await
-        .map_err(|e| CryptoTraceError::Other(format!("Download failed for '{}': {}", provider.id, e)))?;
+    let resp = client.get(&provider.url).send().await.map_err(|e| {
+        CryptoTraceError::Other(format!("Download failed for '{}': {}", provider.id, e))
+    })?;
 
     if !resp.status().is_success() {
         return Err(CryptoTraceError::Other(format!(
@@ -116,17 +132,28 @@ async fn download_provider_signatures(provider: &CommunityProvider) -> Result<Ve
         .map_err(|e| CryptoTraceError::Other(format!("Download read error: {}", e)))?;
 
     // Ensure the target directory exists
-    let local_path = Path::new("signatures").join("community").join(&provider.signature_path);
+    let local_path = Path::new("signatures")
+        .join("community")
+        .join(&provider.signature_path);
     if let Some(parent) = local_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| CryptoTraceError::Other(format!("Cannot create directory '{}': {}", parent.display(), e)))?;
+        std::fs::create_dir_all(parent).map_err(|e| {
+            CryptoTraceError::Other(format!(
+                "Cannot create directory '{}': {}",
+                parent.display(),
+                e
+            ))
+        })?;
     }
 
     // Cache the downloaded file locally
     std::fs::write(&local_path, &data)
         .map_err(|e| CryptoTraceError::Other(format!("Cannot cache signature file: {}", e)))?;
 
-    tracing::info!("Downloaded community provider '{}' ({} bytes)", provider.id, data.len());
+    tracing::info!(
+        "Downloaded community provider '{}' ({} bytes)",
+        provider.id,
+        data.len()
+    );
 
     Ok(data.to_vec())
 }

@@ -78,11 +78,7 @@ pub fn compute_confidence(
         .unwrap_or(0.0);
 
     let entropy_consistency = if hash_detection.is_some() {
-        if entropy < 4.0 {
-            0.9
-        } else {
-            0.3
-        }
+        if entropy < 4.0 { 0.9 } else { 0.3 }
     } else if encoding_detection.is_some() {
         if entropy > 3.0 && entropy < 7.0 {
             0.8
@@ -95,7 +91,9 @@ pub fn compute_confidence(
 
     // Correlated signal cap: if both hash AND encoding are positive, cap
     // the combined contribution to prevent overcounting.
-    let combined = signal_strength * SIGNAL_STRENGTH_WEIGHT + entropy_consistency * ENTROPY_WEIGHT + BASELINE_CONFIDENCE;
+    let combined = signal_strength * SIGNAL_STRENGTH_WEIGHT
+        + entropy_consistency * ENTROPY_WEIGHT
+        + BASELINE_CONFIDENCE;
     if hash_detection.is_some() && encoding_detection.is_some() {
         combined.min(0.95)
     } else {
@@ -104,10 +102,7 @@ pub fn compute_confidence(
 }
 
 /// Compute primary signal drivers — the signals that most influence confidence.
-fn compute_primary_drivers(
-    signal_strength: f64,
-    entropy_consistency: f64,
-) -> Vec<String> {
+fn compute_primary_drivers(signal_strength: f64, entropy_consistency: f64) -> Vec<String> {
     let signal_contrib = signal_strength * SIGNAL_STRENGTH_WEIGHT;
     let entropy_contrib = entropy_consistency * ENTROPY_WEIGHT;
 
@@ -116,7 +111,8 @@ fn compute_primary_drivers(
         ("entropy_consistency", entropy_contrib),
     ];
     drivers.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    drivers.into_iter()
+    drivers
+        .into_iter()
         .filter(|(_, v)| *v > 0.0)
         .take(2)
         .map(|(name, val)| format!("{} ({:.2})", name, val))
@@ -134,10 +130,17 @@ fn compute_conflicting_signals(
     // Hash detected but entropy is too high for a hash
     if let Some(h) = hash_detection {
         if entropy > 5.0 && h.algorithm != "NTLM" {
-            conflicts.push(format!("Hash mismatch: {} detected but entropy {:.1} is too high for a hash", h.algorithm, entropy));
+            conflicts.push(format!(
+                "Hash mismatch: {} detected but entropy {:.1} is too high for a hash",
+                h.algorithm, entropy
+            ));
         }
         if encoding_detection.is_some() {
-            conflicts.push(format!("Type conflict: hash ({}) and encoding ({}) both detected", h.algorithm, encoding_detection.unwrap().encoding_type));
+            conflicts.push(format!(
+                "Type conflict: hash ({}) and encoding ({}) both detected",
+                h.algorithm,
+                encoding_detection.unwrap().encoding_type
+            ));
         }
     }
 
@@ -164,7 +167,11 @@ pub fn build_detection_result(
     let entropy_consistency = if hash_detection.is_some() {
         if entropy < 4.0 { 0.9 } else { 0.3 }
     } else if encoding_detection.is_some() {
-        if entropy > 3.0 && entropy < 7.0 { 0.8 } else { 0.4 }
+        if entropy > 3.0 && entropy < 7.0 {
+            0.8
+        } else {
+            0.4
+        }
     } else {
         0.5
     };
@@ -223,19 +230,22 @@ pub fn build_detection_result(
 
     // Compute primary drivers and conflicting signals
     let primary_drivers = compute_primary_drivers(signal_strength, entropy_consistency);
-    let conflicting_signals = compute_conflicting_signals(hash_detection, encoding_detection, entropy);
+    let conflicting_signals =
+        compute_conflicting_signals(hash_detection, encoding_detection, entropy);
 
     // Apply calibration if available
     // Apply risk overrides and CVE data
     let mut weakness_cve = Vec::new();
     if let Some(ref algo) = algorithm {
-        let (overridden_risk, algo_cves) = crate::intelligence::risk::resolve_risk_level(algo, &risk_overrides);
+        let (overridden_risk, algo_cves) =
+            crate::intelligence::risk::resolve_risk_level(algo, &risk_overrides);
         if risk_overrides.contains_key(algo) {
             risk_level = overridden_risk;
         }
         weakness_cve = algo_cves.clone();
         // Also try loading from external CVE databases
-        let ext_cves = crate::intelligence::risk::build_cve_map("signatures/cve_map.yaml", "cve-db.json");
+        let ext_cves =
+            crate::intelligence::risk::build_cve_map("signatures/cve_map.yaml", "cve-db.json");
         for (cve_id, desc) in &ext_cves {
             if algo.contains(cve_id) || desc.to_lowercase().contains(&algo.to_lowercase()) {
                 if !weakness_cve.contains(cve_id) {
@@ -251,9 +261,9 @@ pub fn build_detection_result(
         let contribs = calibration::signal_contributions(m, &signals);
         let trace = calibration::format_contributions(&contribs);
         (cal_conf, true, Some(trace))
-        } else {
-            (heuristic_confidence, false, None)
-        };
+    } else {
+        (heuristic_confidence, false, None)
+    };
 
     DetectionResult {
         input_hash,
@@ -326,14 +336,7 @@ mod tests {
         };
         set_model(model);
 
-        let result = build_detection_result(
-            b"test",
-            SourceType::String,
-            None,
-            None,
-            4.0,
-            None,
-        );
+        let result = build_detection_result(b"test", SourceType::String, None, None, 4.0, None);
         assert!(result.calibrated);
         assert!(!result.confidence_is_provisional);
         assert!((result.confidence - 0.731).abs() < 0.01);

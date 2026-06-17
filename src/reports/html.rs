@@ -14,53 +14,104 @@ pub fn format_html(result: &DetectionResult) -> String {
 
     html.push_str(r#"<div class="container">"#);
     html.push_str(r#"<div class="header"><h1>CryptoTrace Analysis Report</h1>"#);
-    html.push_str(&format!("<span class=\"version\">v{}</span></div>", result.engine_version));
+    html.push_str(&format!(
+        "<span class=\"version\">v{}</span></div>",
+        result.engine_version
+    ));
 
     // Summary
     html.push_str(r#"<div class="card"><h2>Summary</h2><table>"#);
-    html.push_str(&format!("<tr><td>Input Hash</td><td class=\"mono\">{}</td></tr>", result.input_hash));
-    html.push_str(&format!("<tr><td>Source</td><td>{:?}</td></tr>", result.source_type));
-    html.push_str(&format!("<tr><td>Entropy</td><td>{:.2} / 8.00</td></tr>", result.entropy));
-    html.push_str(&format!("<tr><td>Risk Level</td><td class=\"risk-{}\">{:?}</td></tr>",
-        result.risk_level.to_string().to_lowercase(), result.risk_level));
+    html.push_str(&format!(
+        "<tr><td>Input Hash</td><td class=\"mono\">{}</td></tr>",
+        result.input_hash
+    ));
+    html.push_str(&format!(
+        "<tr><td>Source</td><td>{:?}</td></tr>",
+        result.source_type
+    ));
+    html.push_str(&format!(
+        "<tr><td>Entropy</td><td>{:.2} / 8.00</td></tr>",
+        result.entropy
+    ));
+    html.push_str(&format!(
+        "<tr><td>Risk Level</td><td class=\"risk-{}\">{:?}</td></tr>",
+        result.risk_level.to_string().to_lowercase(),
+        result.risk_level
+    ));
     html.push_str("</table></div>");
 
     // Detection
     html.push_str(r#"<div class="card"><h2>Detection</h2><table>"#);
-    html.push_str(&format!("<tr><td>Type</td><td>{}</td></tr>", result.detected_type));
-    html.push_str(&format!("<tr><td>Algorithm</td><td>{}</td></tr>",
-        result.algorithm.as_deref().unwrap_or("Unknown")));
-    html.push_str(&format!("<tr><td>Confidence</td><td>{:.1}% {}</td></tr>",
+    html.push_str(&format!(
+        "<tr><td>Type</td><td>{}</td></tr>",
+        result.detected_type
+    ));
+    html.push_str(&format!(
+        "<tr><td>Algorithm</td><td>{}</td></tr>",
+        result.algorithm.as_deref().unwrap_or("Unknown")
+    ));
+    html.push_str(&format!(
+        "<tr><td>Confidence</td><td>{:.1}% {}</td></tr>",
         result.confidence * 100.0,
-        if result.calibrated { "(calibrated)" } else { "(provisional)" }));
+        if result.calibrated {
+            "(calibrated)"
+        } else {
+            "(provisional)"
+        }
+    ));
     if let Some(ref weakness) = result.weakness {
         html.push_str(&format!("<tr><td>Weakness</td><td>{}</td></tr>", weakness));
     }
     if !result.weakness_cve.is_empty() {
-        html.push_str(&format!("<tr><td>CVEs</td><td>{}</td></tr>",
-            result.weakness_cve.join(", ")));
+        html.push_str(&format!(
+            "<tr><td>CVEs</td><td>{}</td></tr>",
+            result.weakness_cve.join(", ")
+        ));
     }
     if !result.recommendations.is_empty() {
-        html.push_str(&format!("<tr><td>Recommendation</td><td>{}</td></tr>",
-            result.recommendations.join("; ")));
+        html.push_str(&format!(
+            "<tr><td>Recommendation</td><td>{}</td></tr>",
+            result.recommendations.join("; ")
+        ));
     }
     html.push_str("</table></div>");
 
     // Signals
     if let Some(ref sig) = result.signals {
         html.push_str(r#"<div class="card"><h2>Signal Breakdown</h2><table>"#);
-        html.push_str(&format!("<tr><td>Entropy</td><td>{:.2}</td></tr>", sig.entropy));
+        html.push_str(&format!(
+            "<tr><td>Entropy</td><td>{:.2}</td></tr>",
+            sig.entropy
+        ));
         if let Some(bd) = sig.byte_distribution {
-            html.push_str(&format!("<tr><td>Byte Distribution</td><td>{:.2}</td></tr>", bd));
+            html.push_str(&format!(
+                "<tr><td>Byte Distribution</td><td>{:.2}</td></tr>",
+                bd
+            ));
         }
-        html.push_str(&format!("<tr><td>Block Alignment</td><td>{:.2}</td></tr>", sig.block_alignment));
-        html.push_str(&format!("<tr><td>Magic Bytes</td><td>{:.2}</td></tr>", sig.magic_bytes));
-        html.push_str(&format!("<tr><td>Length Pattern</td><td>{:.2}</td></tr>", sig.length_pattern));
+        html.push_str(&format!(
+            "<tr><td>Block Alignment</td><td>{:.2}</td></tr>",
+            sig.block_alignment
+        ));
+        html.push_str(&format!(
+            "<tr><td>Magic Bytes</td><td>{:.2}</td></tr>",
+            sig.magic_bytes
+        ));
+        html.push_str(&format!(
+            "<tr><td>Length Pattern</td><td>{:.2}</td></tr>",
+            sig.length_pattern
+        ));
         if let Some(cp) = sig.charset_purity {
-            html.push_str(&format!("<tr><td>Charset Purity</td><td>{:.2}</td></tr>", cp));
+            html.push_str(&format!(
+                "<tr><td>Charset Purity</td><td>{:.2}</td></tr>",
+                cp
+            ));
         }
         if let Some(wv) = sig.window_variance {
-            html.push_str(&format!("<tr><td>Window Variance</td><td>{:.2}</td></tr>", wv));
+            html.push_str(&format!(
+                "<tr><td>Window Variance</td><td>{:.2}</td></tr>",
+                wv
+            ));
         }
         html.push_str("</table></div>");
     }
@@ -83,19 +134,24 @@ pub fn format_html(result: &DetectionResult) -> String {
 
     // Decision trace
     if let Some(ref trace) = result.decision_trace {
-        html.push_str(&format!(r#"<div class="card"><h2>Decision Trace</h2><p>{}</p></div>"#, trace));
+        html.push_str(&format!(
+            r#"<div class="card"><h2>Decision Trace</h2><p>{}</p></div>"#,
+            trace
+        ));
     }
 
     // Layer tree
     if !result.layers.is_empty() {
         html.push_str(r#"<div class="card"><h2>Layer Tree</h2><ul>"#);
         for layer in &result.layers {
-            write!(html,
+            write!(
+                html,
                 "<li>[{}] {} ({:.0}% confidence)</li>",
                 layer.algorithm.as_deref().unwrap_or("?"),
                 layer.detected_type,
                 layer.confidence * 100.0
-            ).ok();
+            )
+            .ok();
         }
         html.push_str("</ul></div>");
     }
@@ -105,7 +161,10 @@ pub fn format_html(result: &DetectionResult) -> String {
         html.push_str(r#"<div class="card"><h2>AI Narrative</h2>"#);
         html.push_str(&format!("<p><strong>Summary:</strong> {}</p>", ai.summary));
         html.push_str(&format!("<p><strong>Risk:</strong> {}</p>", ai.risk_reason));
-        html.push_str(&format!("<p><strong>Action:</strong> {}</p>", ai.recommended_action));
+        html.push_str(&format!(
+            "<p><strong>Action:</strong> {}</p>",
+            ai.recommended_action
+        ));
         html.push_str("</div>");
     }
 
@@ -139,7 +198,7 @@ p { margin: 8px 0; line-height: 1.5; }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{RiskLevel, SignalBreakdown, AiNarrative, SourceType};
+    use crate::types::{AiNarrative, RiskLevel, SignalBreakdown, SourceType};
 
     #[test]
     fn test_format_html_basic() {

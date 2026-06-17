@@ -5,13 +5,22 @@ use std::collections::HashMap;
 /// Users can override these in `cryptotrace.toml` → `[risk.overrides]`.
 pub fn default_risk_level(algorithm: &str) -> (RiskLevel, Vec<String>) {
     match algorithm {
-        "MD5" => (RiskLevel::Critical, vec!["CVE-2013-6623".to_string(), "CVE-2004-0913".to_string()]),
-        "SHA1" => (RiskLevel::High, vec!["CVE-2017-11476".to_string(), "CVE-2020-13785".to_string()]),
+        "MD5" => (
+            RiskLevel::Critical,
+            vec!["CVE-2013-6623".to_string(), "CVE-2004-0913".to_string()],
+        ),
+        "SHA1" => (
+            RiskLevel::High,
+            vec!["CVE-2017-11476".to_string(), "CVE-2020-13785".to_string()],
+        ),
         "SHA256" => (RiskLevel::Low, vec![]),
         "SHA512" => (RiskLevel::Low, vec![]),
         "bcrypt" => (RiskLevel::Low, vec![]),
         "Argon2id" | "Argon2i" => (RiskLevel::Low, vec![]),
-        "NTLM" => (RiskLevel::Critical, vec!["CVE-2010-0234".to_string(), "CVE-2012-0125".to_string()]),
+        "NTLM" => (
+            RiskLevel::Critical,
+            vec!["CVE-2010-0234".to_string(), "CVE-2012-0125".to_string()],
+        ),
         "DES" => (RiskLevel::Critical, vec!["CVE-2024-1234".to_string()]),
         "PBKDF2-SHA256" => (RiskLevel::Low, vec![]),
         "PBKDF2-SHA512" => (RiskLevel::Low, vec![]),
@@ -25,13 +34,18 @@ pub fn default_risk_level(algorithm: &str) -> (RiskLevel, Vec<String>) {
         "Base64" | "Base58" | "Base32" | "Base91" | "Ascii85" | "Z85" | "Hex" | "URLEncoding" => {
             (RiskLevel::Low, vec![])
         }
-        "GZIP" | "BZ2" | "Zstd" | "XZ" | "Brotli" | "LZ4" | "Zlib" | "ZIP" => (RiskLevel::Low, vec![]),
+        "GZIP" | "BZ2" | "Zstd" | "XZ" | "Brotli" | "LZ4" | "Zlib" | "ZIP" => {
+            (RiskLevel::Low, vec![])
+        }
         _ => (RiskLevel::Unknown, vec![]),
     }
 }
 
 /// Apply user-configured overrides on top of default risk levels.
-pub fn resolve_risk_level(algorithm: &str, overrides: &HashMap<String, RiskLevel>) -> (RiskLevel, Vec<String>) {
+pub fn resolve_risk_level(
+    algorithm: &str,
+    overrides: &HashMap<String, RiskLevel>,
+) -> (RiskLevel, Vec<String>) {
     if let Some(overridden) = overrides.get(algorithm) {
         return (overridden.clone(), vec![]);
     }
@@ -97,7 +111,9 @@ struct CveEntry {
 pub fn load_cvss_scores(yaml_path: &str) -> HashMap<String, f64> {
     if let Ok(content) = std::fs::read_to_string(yaml_path) {
         if let Ok(parsed) = serde_yaml::from_str::<CveMapFile>(&content) {
-            return parsed.cves.iter()
+            return parsed
+                .cves
+                .iter()
                 .filter_map(|e| e.cvss_v3_base.map(|s| (e.algorithm.clone(), s)))
                 .collect();
         }
@@ -113,11 +129,17 @@ pub fn cvss_score_for_algorithm(algorithm: &str, yaml_path: &str) -> Option<f64>
 
 /// Human-readable CVSS severity label from numeric score.
 pub fn cvss_severity_label(score: f64) -> &'static str {
-    if score >= 9.0 { "CRITICAL" }
-    else if score >= 7.0 { "HIGH" }
-    else if score >= 4.0 { "MEDIUM" }
-    else if score > 0.0 { "LOW" }
-    else { "NONE" }
+    if score >= 9.0 {
+        "CRITICAL"
+    } else if score >= 7.0 {
+        "HIGH"
+    } else if score >= 4.0 {
+        "MEDIUM"
+    } else if score > 0.0 {
+        "LOW"
+    } else {
+        "NONE"
+    }
 }
 
 /// Helper: build a combined CVE map from both sources.

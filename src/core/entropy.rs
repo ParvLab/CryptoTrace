@@ -17,11 +17,7 @@ pub fn shannon_entropy(data: &[u8]) -> (f64, HashMap<u8, usize>) {
         .values()
         .map(|&count| {
             let p = count as f64 / len;
-            if p > 0.0 {
-                -p * p.log2()
-            } else {
-                0.0
-            }
+            if p > 0.0 { -p * p.log2() } else { 0.0 }
         })
         .sum();
 
@@ -29,7 +25,12 @@ pub fn shannon_entropy(data: &[u8]) -> (f64, HashMap<u8, usize>) {
 }
 
 /// Classify entropy score into a human-readable category using configurable thresholds.
-pub fn classify_entropy(score: f64, plaintext_max: f64, mixed_max: f64, compressed_max: f64) -> &'static str {
+pub fn classify_entropy(
+    score: f64,
+    plaintext_max: f64,
+    mixed_max: f64,
+    compressed_max: f64,
+) -> &'static str {
     if score < plaintext_max {
         "plaintext/structured"
     } else if score < mixed_max {
@@ -76,7 +77,10 @@ mod tests {
     #[test]
     fn test_classify_entropy() {
         assert_eq!(classify_entropy(2.0, 3.5, 6.0, 7.5), "plaintext/structured");
-        assert_eq!(classify_entropy(4.5, 3.5, 6.0, 7.5), "mixed/partially_encoded");
+        assert_eq!(
+            classify_entropy(4.5, 3.5, 6.0, 7.5),
+            "mixed/partially_encoded"
+        );
         assert_eq!(classify_entropy(7.0, 3.5, 6.0, 7.5), "compressed/encoded");
         assert_eq!(classify_entropy(7.8, 3.5, 6.0, 7.5), "high_entropy");
     }

@@ -34,8 +34,10 @@ pub struct CacheInfo {
 
 /// Return current cache statistics.
 pub fn cache_info() -> CacheInfo {
-    NARRATIVE_CACHE.read().ok().map(|guard| {
-        match guard.as_ref() {
+    NARRATIVE_CACHE
+        .read()
+        .ok()
+        .map(|guard| match guard.as_ref() {
             Some(cache) => CacheInfo {
                 enabled: true,
                 capacity: cache.capacity(),
@@ -46,12 +48,12 @@ pub fn cache_info() -> CacheInfo {
                 capacity: 0,
                 count: 0,
             },
-        }
-    }).unwrap_or(CacheInfo {
-        enabled: false,
-        capacity: 0,
-        count: 0,
-    })
+        })
+        .unwrap_or(CacheInfo {
+            enabled: false,
+            capacity: 0,
+            count: 0,
+        })
 }
 
 /// Build a deterministic cache key from detection fields (no raw bytes).

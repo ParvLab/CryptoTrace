@@ -157,10 +157,14 @@ pub fn scan_yara(data: &[u8], rules_path: &str) -> Result<Vec<YaraMatch>> {
         Err(e) => {
             if e.kind() == std::io::ErrorKind::NotFound {
                 return Err(CryptoTraceError::Other(
-                    "YARA CLI not found. Install yara from https://virustotal.github.io/yara/".to_string(),
+                    "YARA CLI not found. Install yara from https://virustotal.github.io/yara/"
+                        .to_string(),
                 ));
             }
-            Err(CryptoTraceError::Other(format!("YARA execution error: {}", e)))
+            Err(CryptoTraceError::Other(format!(
+                "YARA execution error: {}",
+                e
+            )))
         }
     }
 }
@@ -243,7 +247,9 @@ mod tests {
             source: "VirusTotal".to_string(),
             scan_date: Some("1716000000.000".to_string()),
             threat_labels: vec!["Trojan.Generic.123".to_string()],
-            vt_link: Some("https://www.virustotal.com/gui/file/d41d8cd98f00b204e9800998ecf8427e".to_string()),
+            vt_link: Some(
+                "https://www.virustotal.com/gui/file/d41d8cd98f00b204e9800998ecf8427e".to_string(),
+            ),
         };
 
         let json = serde_json::to_string(&report).unwrap();
@@ -254,11 +260,9 @@ mod tests {
     #[tokio::test]
     async fn test_composite_scan_no_api_key() {
         let config = ThreatIntelConfig::default();
-        let reports = composite_threat_scan(
-            "e99a18c428cb38d5f260853678922e03",
-            b"test",
-            &config,
-        ).await.unwrap();
+        let reports = composite_threat_scan("e99a18c428cb38d5f260853678922e03", b"test", &config)
+            .await
+            .unwrap();
         assert!(reports.is_empty());
     }
 }

@@ -3,11 +3,11 @@ use cryptotrace::core::hashing::detect_hash;
 #[test]
 fn test_md5_accuracy() {
     let cases = vec![
-        ("d41d8cd98f00b204e9800998ecf8427e", true),  // empty hash
+        ("d41d8cd98f00b204e9800998ecf8427e", true),   // empty hash
         ("5f4dcc3b5aa765d61d8327deb882cf99", true),   // "password"
         ("900150983cd24fb0d6963f7d28e17f72", true),   // "abc"
-        ("notahash0000000000000000000000000", false),  // wrong length
-        ("00000000000000000000000000000000", true),    // all zeros
+        ("notahash0000000000000000000000000", false), // wrong length
+        ("00000000000000000000000000000000", true),   // all zeros
     ];
     for (input, expected) in cases {
         let result = detect_hash(input);
@@ -21,8 +21,8 @@ fn test_md5_accuracy() {
 #[test]
 fn test_sha1_accuracy() {
     let cases = vec![
-        ("da39a3ee5e6b4b0d3255bfef95601890afd80709", true),  // empty
-        ("a9993e364706816aba3e25717850c26c9cd0d89d", true),  // "abc"
+        ("da39a3ee5e6b4b0d3255bfef95601890afd80709", true), // empty
+        ("a9993e364706816aba3e25717850c26c9cd0d89d", true), // "abc"
         ("not40characterslongenough1234567890", false),
     ];
     for (input, expected) in cases {
@@ -54,7 +54,10 @@ fn test_sha512_accuracy() {
 fn test_bcrypt_accuracy() {
     let cases = vec![
         ("$2b$12$LJ3m4ys3Lv4S7K7K7K7K7O", true),
-        ("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", true),
+        (
+            "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy",
+            true,
+        ),
         ("plaintext", false),
     ];
     for (input, expected) in cases {
@@ -91,7 +94,11 @@ fn test_pbkdf2_accuracy() {
         let result = detect_hash(input);
         assert_eq!(result.is_some(), expected, "PBKDF2: '{}'", input);
         if let Some(r) = result {
-            assert!(r.algorithm.starts_with("PBKDF2-"), "Expected PBKDF2 for '{}'", input);
+            assert!(
+                r.algorithm.starts_with("PBKDF2-"),
+                "Expected PBKDF2 for '{}'",
+                input
+            );
         }
     }
 }
