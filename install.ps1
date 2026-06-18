@@ -81,6 +81,9 @@ if ($UserPath -notlike "*$BinDir*") {
     Write-Host "→ Added $BinDir to your PATH (user-level)"
 }
 
+# Refresh PATH in the current session so 'cryptotrace' works immediately
+$env:Path = "$BinDir;$env:Path"
+
 Write-Host ""
 Write-Host "✓ CryptoTrace $ReleaseTag installed!"
 Write-Host "  Binary:   $BinDir\cryptotrace.exe"
@@ -88,5 +91,3 @@ Write-Host "  Data:     $DataDir"
 Write-Host ""
 Write-Host "  Run: cryptotrace --help"
 Write-Host "  Run: cryptotrace analyze ""your-input"""
-Write-Host ""
-Write-Host "NOTE: You may need to restart your terminal for PATH changes to take effect."
