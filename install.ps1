@@ -84,6 +84,16 @@ if ($UserPath -notlike "*$BinDir*") {
 # Refresh PATH in the current session so 'cryptotrace' works immediately
 $env:Path = "$BinDir;$env:Path"
 
+# Add to PowerShell profile so new terminals also have it
+$profileLine = "`$env:Path = '$BinDir;' + `$env:Path"
+$profileDir = Split-Path $PROFILE -Parent
+if ($profileDir) {
+    New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+    if (!(Test-Path $PROFILE) -or !(Select-String -Path $PROFILE -Pattern [regex]::Escape($BinDir) -Quiet)) {
+        Add-Content -Path $PROFILE -Value "`n# Added by CryptoTrace installer`n$profileLine"
+    }
+}
+
 Write-Host ""
 Write-Host "✓ CryptoTrace $ReleaseTag installed!"
 Write-Host "  Binary:   $BinDir\cryptotrace.exe"
@@ -91,3 +101,6 @@ Write-Host "  Data:     $DataDir"
 Write-Host ""
 Write-Host "  Run: cryptotrace --help"
 Write-Host "  Run: cryptotrace analyze ""your-input"""
+Write-Host ""
+Write-Host "  → If 'cryptotrace' is not recognized, paste this:"
+Write-Host "    `$env:Path = '$BinDir;' + `$env:Path"
